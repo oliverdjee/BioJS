@@ -154,7 +154,7 @@ function Asa(atoms)
 				var j = cycled_indices[tj];
 				var atom_j = self.atoms[neighbor_indices[j]];
 				var  r = self.radii[neighbor_indices[j]] + self.probe;
-				var diff_sq = getSquaredPointDistance(test_point,atom_j.coords);
+				var diff_sq = GEOMETRY.PointSqrDistance(test_point,atom_j.coords);
 				if (diff_sq < r*r) {
 					j_closest_neighbor = j;
 					is_accessible = false;
