@@ -703,44 +703,7 @@ function Structure()
 		for(var i = 0; i < self.atoms.length; i++)
 		{
 			var atom = self.atoms[i];
-			var it = 0;
-			while(atom.implicitH > 0)
-			{
-				atom.explicitH ++;
-				atom.implicitH --;
-				it++;
-				var atoms = [];
-				//finding the atoms already bonded to the target atom
-				for(var x = 0; x < atom.bonds.length; x ++)
-				{
-					atoms.push(self.atoms[atom.bonds[x]].coords);
-				}
-				var center = atom.coords;
-				var type = atom.hybridization;
-				
-				var distance = ELEMENTS.getCovalentRadius(atom.element)
-									+ELEMENTS.getCovalentRadius("H");
-				
-				var builder = new AtomBuilder(distance,1*2*Math.PI/3,center,atoms);
-				builder.setType(type);
-				if(type === "SP2")
-				{
-					builder.setAngle(it*2*Math.PI * 120/360)
-				}
-				if(type === "SP3")
-				{
-					builder.setAngle(it*2*Math.PI * 109.5/360)
-				}
-				builder.Build();
-				var atomBuilt = builder.getAtom();
-				if(atomBuilt !== null)
-				{
-					var newAtom = new Atom(atom.group,"newH"+it,"H",atomBuilt)
-					atom.group.addAtom(newAtom);
-					atom.bonds.push(newAtom.id);
-					newAtom.bonds.push(atom.id);
-				}
-			}
+			atom.BuildImplicitH();
 		}
 	}
 }

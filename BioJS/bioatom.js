@@ -76,6 +76,47 @@ function Atom(group,name,element,coordinates)
 		self.altLoc.push(atom);
 	}
 	
+	this.BuildImplicitH = function()
+	{
+		var connectedCoords = [];
+		var inPlaneAtoms = [];
+		var structure = self.structure;
+		var atom = self;
+		var bonds = atom.bonds;
+		for(var x = 0 ; x < bonds.length; x ++)
+		{
+			var nextAtom = structure.atoms[bonds[x]];
+			connectedCoords.push(nextAtom.coords);
+			
+			var nextBonds = nextAtom.bonds;
+			for(var z = 0 ; z < nextBonds.length; z++)
+			{
+				if(nextBonds[z] === atom.id){continue;}
+				var inPlaneAtom = structure.atoms[nextBonds[z]];
+				inPlaneAtoms.push(inPlaneAtom.coords);
+			}
+		}
+		
+		var distance = ELEMENTS.getCovalentRadius(atom.element)
+							+ELEMENTS.getCovalentRadius("H");
+		
+		var builder = new AtomBuilder(distance, atom.hybridization, atom.coords, connectedCoords,inPlaneAtoms);
+		builder.Build();
+		
+		var newAtoms = builder.getCoords();
+		
+		number = atom.implicitH-atom.explicitH;
+		
+		for(var x = 0; x < newAtoms.length && x < number;x++)
+		{
+			var newAtom = new Atom(atom.group,"H0"+x,"H",newAtoms[x]);
+			atom.explicitH ++;
+			atom.group.addAtom(newAtom);
+			atom.bonds.push(newAtom.id);
+			newAtom.bonds.push(atom.id);
+		}
+	}
+	
 	
 	/**
 	 * @author Olivier

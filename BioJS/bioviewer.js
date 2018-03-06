@@ -25,6 +25,15 @@
  *    -> FIXED, DONE
  *    
  * -> Add overriding of the "ESC" (27) key in full-screen mode for proper resizing
+ * 
+ * 
+ * March 6th 2018
+ * 
+ * -> Make the CreateScene a Self Contained class instead of a function
+ * 
+ * -> Improve the "UpdateViewer()" functinon to be more efficient. Right now, it deletes
+ * 	  the BABYLON engine and then regenerates it with additionnal atoms. This is unefficient.
+ *    this will require a Scene object/class.
  */	  
 
 
@@ -45,20 +54,24 @@
  * @param width
  * width of the viewer
  */
-function BioViewer(structure,window,document,name,height,width)
+function BioViewer(structure,name,height,width)
 {
-	this.width = 0;
-	this.height = 0;
-	this.canvas = null;
-	this.engine = null; // Generate the BABYLON 3D engine
-    this.Materials = null;
-    this.scene = null;
+	var self = this;
+	this.width;
+	this.height;
+	this.canvas;
+	this.engine; // Generate the BABYLON 3D engine
+    this.Materials;
+    this.scene;
     
-    /**
-     * CONSTRUCTOR
-     */
-    var self = this;
-    if(width != null && height != null)
+	self.width = 0;
+	self.height = 0;
+	self.canvas = null;
+	self.engine = null; // Generate the BABYLON 3D engine
+    self.Materials = null;
+    self.scene = null;
+	
+	if(width != null && height != null)
 	{
 		self.height = height;
 		self.width =  width;
@@ -66,7 +79,7 @@ function BioViewer(structure,window,document,name,height,width)
     var newelement = document.createElement("CANVAS");
     newelement.id = name;
     self.canvas = newelement;
-    self.engine = new BABYLON.Engine(self.canvas, true)
+    self.engine = new BABYLON.Engine(self.canvas, true);
     createScene().then(function(){
     	 self.engine.runRenderLoop(function () 
     		    	{ // Register a render loop to repeatedly render the scene
@@ -78,12 +91,10 @@ function BioViewer(structure,window,document,name,height,width)
     		        });
     	}
     );
-   
 	
 	/**
 	 * PUBLIC FUNCTION
 	 */
-	
 	this.appendToDOM = function(element,height,width)
 	{
 		self.height= height;
@@ -91,101 +102,116 @@ function BioViewer(structure,window,document,name,height,width)
 		element.appendChild(self.canvas);
 		self.canvas.height = height;
 		self.canvas.width = width;
-		addHoverInfo();
-		
-		function addHoverInfo()
-	    {	   	
-	    	var on_hover = function(meshEvent){
-	    		var info = document.createElement("p");
-	    		info.id = "atom_info";
-	            info.zIndex = 0;
-	            var sty = info.style;
-	            info.align ="left";
-	            sty.position = "absolute";
-	            sty.lineHeight = "1.2em";
-	            sty.paddingLeft = "2px";
-	            sty.paddingRight = "2px";
-	            sty.color = "black";
-	            sty.border = "1pt black";
-	            sty.backgroundColor = "beige";
-	            sty.font = "8px Consolas";
-	            sty.top = "5px";
-	            sty.left = "5px";
-	            
-	           
-	            //var selected = meshEvent.meshUnderPointer.selected;
-	            //var groupselected = meshEvent.meshUnderPointer.groupselected;
-	            //var chainselected = meshEvent.meshUnderPointer.chainselected;
-	            
-	            
-
-	            var atom = structure.atoms[meshEvent.meshUnderPointer.id];
-	            var text = "Atom "+atom.name;
-	            var node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "Grp: "+atom.group.name;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "Cla: "+atom.group.Class;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "Hyb: "+atom.hybridization;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "Elm: "+atom.element;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "Ocp: "+atom.occupancy;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            info.appendChild(document.createElement("br"));
-	            text = "B-f: "+atom.bfactor;
-	            node = document.createTextNode(text);
-	            info.appendChild(node);
-	            
-	            element.appendChild(info);
-	        };
-	    	
-	        var out_hover = function(meshEvent)
-	        {
-	    		while (document.getElementById("atom_info")) {
-	    			document.getElementById("atom_info").parentNode.removeChild(document.getElementById("atom_info"));
-	    		}
-	        };
-	        
-	    	for(var i = 0; i < self.scene.meshes.length; i++)
-	        {
-	        	var sphere = self.scene.meshes[i];
-	        	if(sphere.isAtom)
-	        	{
-	        		sphere.actionManager.registerAction(
-	        	            new BABYLON.ExecuteCodeAction(
-	        	                BABYLON.ActionManager.OnPointerOverTrigger,
-	        	                on_hover
-	        	            )
-	        	        );
-	        	        sphere.actionManager.registerAction(
-	        	            new BABYLON.ExecuteCodeAction(
-	        	                BABYLON.ActionManager.OnPointerOutTrigger,
-	        	                out_hover
-	        	            )
-	        	        );
-
-	        	}
-	       	}
-	    	
-	    	self.scene.onDispose = function() {
-	    		while (document.getElementById("atom_info")) {
-	    			document.getElementById("atom_info").parentNode.removeChild(document.getElementById("atom_info"));
-	    		}
-	        };
-	    }
+		self.addHoverInfo(element);
 	}
+	
+	this.addHoverInfo = function(element)
+    {	   	
+    	var on_hover = function(meshEvent)
+    	{
+    		var info = document.createElement("p");
+    		info.id = "atom_info";
+            info.zIndex = 0;
+            var sty = info.style;
+            info.align ="left";
+            sty.position = "absolute";
+            sty.lineHeight = "1.2em";
+            sty.paddingLeft = "2px";
+            sty.paddingRight = "2px";
+            sty.color = "black";
+            sty.border = "1pt black";
+            sty.backgroundColor = "beige";
+            sty.font = "8px Consolas";
+            sty.top = "5px";
+            sty.left = "5px";
+
+            var atom = structure.atoms[meshEvent.meshUnderPointer.id];
+            var text = "Atom "+atom.name;
+            var node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "X: "+atom.coords[0];
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Y: "+atom.coords[1];
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Z: "+atom.coords[2];
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Grp: "+atom.group.name;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Cla: "+atom.group.Class;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Hyb: "+atom.hybridization;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Elm: "+atom.element;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Ocp: "+atom.occupancy;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "B-f: "+atom.bfactor;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Impl H: "+atom.implicitH;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            info.appendChild(document.createElement("br"));
+            text = "Expl H: "+atom.explicitH;
+            node = document.createTextNode(text);
+            info.appendChild(node);
+            
+            element.appendChild(info);
+        };
+    	
+        var out_hover = function(meshEvent)
+        {
+    		while (document.getElementById("atom_info")) {
+    			document.getElementById("atom_info").parentNode.removeChild(document.getElementById("atom_info"));
+    		}
+        };
+        
+    	for(var i = 0; i < self.scene.meshes.length; i++)
+        {
+        	var sphere = self.scene.meshes[i];
+        	if(sphere.isAtom)
+        	{
+        		sphere.actionManager.registerAction(
+        	            new BABYLON.ExecuteCodeAction(
+        	                BABYLON.ActionManager.OnPointerOverTrigger,
+        	                on_hover
+        	            )
+        	        );
+        	        sphere.actionManager.registerAction(
+        	            new BABYLON.ExecuteCodeAction(
+        	                BABYLON.ActionManager.OnPointerOutTrigger,
+        	                out_hover
+        	            )
+        	        );
+
+        	}
+       	}
+    	
+
+    	self.scene.onDispose = function() {
+    		while (document.getElementById("atom_info")) {
+    			document.getElementById("atom_info").parentNode.removeChild(document.getElementById("atom_info"));
+    		}
+        };
+    }
 	
 	this.getSelectedGroups = function()
 	{
@@ -208,6 +234,35 @@ function BioViewer(structure,window,document,name,height,width)
 			UpdateAtom(atoms[i]);
 		}
 		//console.log(self.scene.selectedAtoms);
+	}
+	
+	this.UpdateViewer = function()
+	{
+		var element = self.canvas;
+		var height = self.canvas.heigth;
+		var width = self.canvas.width;
+		
+		while (element.firstChild) 
+		{
+			element.removeChild(element.firstChild);
+		}
+		
+		self.scene.dispose();
+		self.engine.dispose();
+		
+		self.engine = new BABYLON.Engine(self.canvas, true);
+	    createScene().then(function(){
+	    	 self.engine.runRenderLoop(function () 
+	    		    	{ // Register a render loop to repeatedly render the scene
+	    		    		self.scene.render();
+	    		    	});
+	    	window.addEventListener("resize", function () 
+	    		     	{ // Watch for browser/canvas resize events
+	    		        	self.engine.resize();
+	    		        });
+	    	}
+	    );
+	    self.addHoverInfo(element.parentNode);
 	}
 	
 	/**
@@ -289,11 +344,7 @@ function BioViewer(structure,window,document,name,height,width)
 	    light.intensity = 0.7;
 	    
 	    camera.setPosition(new BABYLON.Vector3(center[0]-areaSize/1.66, center[1]-areaSize/1.66, center[2]-areaSize/1.66));
-	 
-	    /**
-	     * MAIN CODE
-	     * CAN BE MODIFIED FOR WHICH FUNCTION TO CALL?
-	     */
+	    
 	    InitMaterials();
 	    CreateAtoms().then(CreateBonds().then(function(){
 	    	addAtomClicking();
@@ -314,7 +365,11 @@ function BioViewer(structure,window,document,name,height,width)
 		    PrintElapsedTime(startDate, "3D molecule displayed in")
 	    }));
 	    
-		
+		/**
+		 * PULBIC FUNCTION
+		 */
+	    
+	   
 	    
 	    /**
 	     * PRIVATE FUNCTIONS
@@ -332,13 +387,13 @@ function BioViewer(structure,window,document,name,height,width)
 			self.Materials = aMaterial;
 	    }
 	    
-		function StructureBuilder(atom, i)
+	    function StructureBuilder(atom, i)
 	    {
 			var particle = BABYLON.MeshBuilder.CreateSphere(atom.name, {segments: 6}, scene ,true);
 			particle = scene.meshes.pop();
-        	particle.isAtom = true;
-         	particle.isBond = false;
-         	particle.bonds = [];
+	    	particle.isAtom = true;
+	     	particle.isBond = false;
+	     	particle.bonds = [];
 			particle.position.x = atom.coords[0];
 	        particle.position.y = atom.coords[1];
 	        particle.position.z = atom.coords[2];
@@ -348,7 +403,6 @@ function BioViewer(structure,window,document,name,height,width)
 	        particle.chainselected = false;
 	        particle.structureselected = false;
 	    	
-	        
 	        var element = atom.element;
 	        particle.element = element;
 	        
@@ -369,7 +423,7 @@ function BioViewer(structure,window,document,name,height,width)
 	        particle.actionManager.registerAction(
 	        		new BABYLON.ExecuteCodeAction(
 	        				BABYLON.ActionManager.OnPointerOverTrigger, function(ev){	
-	        					var newmat = self.Materials.Hover;
+	        					var newmat = aMaterial.Hover;
 	        			        particle.material = newmat;
 	    	}));
 	    	
@@ -381,15 +435,7 @@ function BioViewer(structure,window,document,name,height,width)
 	    	}));
 	    	
 	    	scene.meshes[atom.id] = particle;
-	    }
-	    
-	    function CenterOfMassBuilder(particle, i)
-	    {
-	    	particle.position.x = center[0];
-	        particle.position.y = center[1];
-	        particle.position.z = center[2];
-	        particle.scaling = new BABYLON.Vector3(4, 4, 4);
-	        particle.color = new BABYLON.Color4(0.2, 0.9, 0.2, 0);
+	    	atom.isDisplayed = true;
 	    }
 	    
 	    async function CreateBonds()
@@ -479,7 +525,7 @@ function BioViewer(structure,window,document,name,height,width)
 	    	//DEBUGGING PASSED
 	    	if(sphere.selected == true)
 	    	{
-		        var material = self.Materials.Picked;
+		        var material = aMaterial.Picked;
 		        sphere.material = material;
 	    	}
 	    	else
@@ -933,63 +979,13 @@ function BioViewer(structure,window,document,name,height,width)
 			        	for(var i = 0; i < scene.selectedAtoms.length;i++)
 			        	{
 			        		var atom = structure.atoms[scene.selectedAtoms[i]];
-			        		var bonds = atom.bonds;
-			        		var connectedCoords = [];
-			        		for(var x = 0 ; x < bonds.length; x ++)
-			        		{
-			        			connectedCoords.push(structure.atoms[bonds[x]].coords);
-			        		}
-			        		var builder = new AtomBuilder(1.09, atom.hybridization, atom.coords, connectedCoords);
-			        		builder.Build();
-			        		var newAtoms = builder.getCoords();
-			        		builder.printNewCoords();
-			        		for(var x = 0; x < newAtoms.length;x++)
-			        		{
-			        			addAtom(scene.meshes.length,newAtoms[x]);
-			        		}
+			        		atom.BuildImplicitH();
 			        	}
+			        	self.UpdateViewer();
 			        }
 			    )
 	    	);
-	    	function addAtom(id,coords)
-	    	{
-	    		var particle = BABYLON.MeshBuilder.CreateSphere("H", {segments: 6}, scene ,true);
-	        	particle.isAtom = true;
-				
-				particle.position.x = coords[0];
-		        particle.position.y = coords[1];
-		        particle.position.z = coords[2];
-		        
-		        particle.element = "H";
-		        
-		        var scale = ELEMENTS.getVdwRadius("H")/1.15; //1.15 is set to see bonds
-		        particle.scaling = new BABYLON.Vector3(scale,scale,scale);
-		        
-		        var color = ELEMENTS.getColor("H");//Vector of size 3 (R,G,B);
-		        var atomcolor = new BABYLON.Color4(color[0],color[1],color[2],1.0);
-		        var material = new BABYLON.StandardMaterial(id, scene);
-		        material.diffuseColor = atomcolor;
-		        particle.material = material;
-		        
-		        particle.isPickable = true; 
-		    	
-		        particle.actionManager = new BABYLON.ActionManager(scene);
-		    	
-		    	//ON MOUSE ENTER
-		        particle.actionManager.registerAction(
-		        		new BABYLON.ExecuteCodeAction(
-		        				BABYLON.ActionManager.OnPointerOverTrigger, function(ev){	
-		        					var newmat = self.Materials.Hover;
-		        			        particle.material = newmat;
-		    	}));
-		    	
-		    	//ON MOUSE EXIT
-		    	particle.actionManager.registerAction(
-		    			new BABYLON.ExecuteCodeAction(
-		    					BABYLON.ActionManager.OnPointerOutTrigger, function(ev){
-		    						Recolor(particle);
-		    	}));
-	    	}
+	  
 	    }
 	    function PickAtom(mesh_atom)
     	{

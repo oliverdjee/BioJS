@@ -205,7 +205,7 @@ function BioSelector(structure, document, dropdown_element, height)
 		{
 			var data = [];
 			var structuredata = {};
-			structuredata.title = "Structure "+structure.name.substring(0,structure.name.length-4);
+			structuredata.title = "Structure "+structure.name;
 			structuredata.href = "#1";
 			structuredata.data = GenerateStructureChainsData(structure);				//atomdata.dataAttrs = 
 			data.push(structuredata);
