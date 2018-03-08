@@ -14,7 +14,7 @@
  */
 function RCSBUrl(fourletterID)
 {
-	return "https://files.rcsb.org/download/"+fourletterID+".pdb";
+	return "https://files.rcsb.org/download/"+fourletterID+PDButil.PDBext;
 }
 
 /**
@@ -31,7 +31,8 @@ function PDBurlReader(URL,callback,progressBar)
 	//Object content
 	var content;
 	var self = this;
-	var name = URL.substring(URL.lastIndexOf("/")+1,URL.length-4);
+	var name = PDButil.stripName(URL);
+	name = PDButil.stripName(name);
 	var request = new XMLHttpRequest();
 	request.open('GET', URL, true);
 	request.onload = function() {
@@ -67,7 +68,8 @@ function PDBurlReader(URL,callback,progressBar)
 function PDBFileReader(file,callback,progressBar)
 {
 	var self = this;
-	var name = file.name;
+	var name= PDButil.stripName(file.name);
+	
 	//Object content
 	var content;
 	//Assigning Properties by reading the file
@@ -538,5 +540,4 @@ function PDBHeader()
 	 *	   printResolution(buf);
      * }
 	 */
-	
 }
