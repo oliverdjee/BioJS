@@ -360,6 +360,8 @@ function BioViewer(structure,name,height,width)
 		    addHideButton("h");
 		    addShowButton("s");
 		    addIsolateButton("x");
+		    addHydrogensButton("p");
+		    addDownloadButton("o");
 		    //DEBUGGING
 		    addTestButton("r");
 		    PrintElapsedTime(startDate, "3D molecule displayed in")
@@ -961,12 +963,7 @@ function BioViewer(structure,name,height,width)
 	    	);
 	    }
 	    
-
-	    /**
-	     * THIS FUNCTION IS STRICLY FOR DEBUGGING PURPOSES
-	     */
-	   
-	    function addTestButton(key)
+	    function addHydrogensButton(key)
 	    {
 	    	scene.actionManager.registerAction(
 			    new BABYLON.ExecuteCodeAction(
@@ -985,8 +982,55 @@ function BioViewer(structure,name,height,width)
 			        }
 			    )
 	    	);
-	  
 	    }
+	    
+	    function addDownloadButton(key)
+	    {
+	    	scene.actionManager.registerAction(
+			    new BABYLON.ExecuteCodeAction(
+			        {
+			            trigger: BABYLON.ActionManager.OnKeyUpTrigger,
+			            parameter: key
+			        },
+			        function () {
+			        	var atoms = [];
+			        	var pdbtext = "";
+			        	for(var i = 0; i < scene.selectedAtoms.length;i++)
+			        	{
+			        		var atom = structure.atoms[scene.meshes[scene.selectedAtoms[i]].id];
+			        		pdbtext += atom.toPDB();	
+			        	}
+			        	PDButil.saveAs(structure.name+".pdb",pdbtext);
+			        }
+			    )
+	    	);
+	    }
+	    /**
+	     * THIS FUNCTION IS STRICLY FOR DEBUGGING PURPOSES
+	     */
+	   
+	    function addTestButton(key)
+	    {
+	    	scene.actionManager.registerAction(
+			    new BABYLON.ExecuteCodeAction(
+			        {
+			            trigger: BABYLON.ActionManager.OnKeyUpTrigger,
+			            parameter: key
+			        },
+			        function () {
+			        	var atoms = [];
+			        	var pdbtext = "";
+			        	for(var i = 0; i < scene.selectedAtoms.length;i++)
+			        	{
+			        		var atom = structure.atoms[scene.meshes[scene.selectedAtoms[i]].id];
+			        		pdbtext += atom.toPDB();	
+			        	}
+			        	PDButil.saveAs(structure.name+".pdb",pdbtext);
+			        }
+			    )
+	    	);
+	    }
+	    
 	    function PickAtom(mesh_atom)
     	{
     		mesh_atom.material = aMaterial.Picked;
