@@ -8,6 +8,10 @@
  * to null, but it should not be.
  *  
  *  ->  Improve the assignChainType to support not only peptidic, but also DNA, RNA
+ *  
+ *  ->  Improve the toPDB() function for wrting a structure to a PDB file. That could include 
+ *  writing Headers, and Atoms, and all other records. For now, only Atoms can
+ *  be written to PDBs. 
  */
 
 
@@ -38,6 +42,17 @@ function Structure()
 	/**
 	 * PUBLIC FUNCTIONS
 	 */
+	
+	this.toPDB = function()
+	{
+		var pdbtext = "";
+    	for(var i = 0; i < self.atoms.length;i++)
+    	{
+    		var atom = self.atoms[i];
+    		pdbtext += atom.toPDB();	
+    	}
+	}
+	
 	this.addChain = function(chain)
 	{
 		var id = self.chains.length;
