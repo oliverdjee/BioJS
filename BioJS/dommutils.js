@@ -4,6 +4,8 @@
 *getBFactor()
 *getSASA()
 *etc.
+*
+*-> Fix issue with the Align Center when calling the atom.toPDB() for atom names f length 2
 */
 
 function buildTitle(size,str)
@@ -241,90 +243,6 @@ data: {PDB: JOBID+".pdb",
  });
 }
 
-function getBfactor()
-{
-	$.ajax(
-	{
-	type: "get",
-	url: "BfactorProfile",
-	success: function(data) 
-	{
-		console.log(data);
-		
-		var element = buildScrollingTable(data);
-		var header = buildTitle("16","B-factor Report");
-		var block = document.getElementById("JmolBlock");
-		block.style.display = "block";
-		var newdiv = document.createElement("div");
-		newdiv.style.cssFloat="left";
-		newdiv.appendChild(header);
-		var btn = document.createElement("button");
-		btn.className = "submit-button";
-		btn.style.color="white";
-		btn.style.margin="5px";
-		btn.style.cssFloat="none";
-		btn.innerHTML ="Download";
-
-		newdiv.appendChild(btn);
-		var scroll = document.createElement("div");
-		scroll.style.overflowY="scroll";
-		scroll.style.height="300px";
-		scroll.appendChild(element[1]);
-		newdiv.appendChild(element[0]);
-		newdiv.appendChild(scroll);
-
-		block.appendChild(newdiv);
-
-	},
-	error: function(error) 
-	{},
-	data: {PDB: JOBID+".pdb"}
-	});
-};
-
-
-function getSASA()
-{
-	$.ajax(
-	{
-		type: "get",
-		url: "SasaProfile",
-		success: function(data) 
-		{
-			console.log(data);
-	
-			var element = buildScrollingTable(data);
-			var header = buildTitle("16","Solvent Exposure Report");
-			var block = document.getElementById("JmolBlock");
-			block.style.display = "block";
-			var newdiv = document.createElement("div");
-			newdiv.style.cssFloat="left";
-			newdiv.appendChild(header);
-			var btn = document.createElement("button");
-			btn.className = "submit-button";
-			btn.style.color="white";
-			btn.style.margin="5px";
-			btn.style.cssFloat="none";
-			btn.innerHTML ="Download";
-			//btn.onChange="getSASA(\"sasa\")"; DOESNT WORK??
-
-			newdiv.appendChild(btn);
-			var scroll = document.createElement("div");
-			scroll.style.overflowY="scroll";
-			scroll.style.height="300px";
-			scroll.appendChild(element[1]);
-			newdiv.appendChild(element[0]);
-			newdiv.appendChild(scroll);
-			
-			block.appendChild(newdiv);
-		},
-		error: function(error) 
-		{},
-		data: {PDB: JOBID+".pdb"}
-	});
-};
-
-
 /**
  * Goal:More flexible structure of scrolling table generation
  * @param data
@@ -451,4 +369,334 @@ function makeUL(document,element,dataArray)
 	}
 	element.appendChild(list);
 }
+
+/**
+ * @param string
+ * The string to format
+ * @param charToAdd
+ * what to add to the string to complete it
+ * @param finalLength
+ * the total length of the final String
+ * @param alignment
+ * choose from 
+ * 		"right" / "left" / "center"
+ * right: charToAdd prepended to the string
+ * left: charToAdd appended to the string
+ * center: charsToAdd prepended and then appended in turn to center the string
+ * @return {String}
+ * The newly formatted string aligned right, left or centered
+ */
+function FormatString(string, charToAdd, finalLength, alignment)
+{
+	var formattedString = string;
+	for(var i = string.length; i < finalLength; i++)
+	{
+		if(alignment === "right")
+		{
+			formattedString = charToAdd+formattedString;
+		}
+		else if(alignment === "left")
+		{
+			formattedString = formattedString+charToAdd;
+		}
+		else if(alignment === "center")
+		{
+			if((finalLength - formattedString.length)%2 == 0)
+			{
+				formattedString = charToAdd+formattedString;
+			}
+			else
+			{
+				formattedString = formattedString+charToAdd;
+			}
+		}
+	}
+	return formattedString;
+}
+
+function FormatNumberToString(number, decimals, charToAdd, finalLength, alignment)
+{
+	var newNum = Number(Math.round(number+'e'+decimals)+'e-'+decimals).toFixed(decimals);
+	var formattedString = newNum;
+	for(var i = formattedString.length; i < finalLength; i++)
+	{
+		if(alignment === "right")
+		{
+			formattedString = charToAdd+formattedString;
+		}
+		else if(alignment === "left")
+		{
+			formattedString = formattedString+charToAdd;
+		}
+		else if(alignment === "center")
+		{
+			if((finalLength - formattedString.length)%2 === 0)
+			{
+				formattedString = charToAdd+formattedString;
+			}
+			else
+			{
+				formattedString = formattedString+charToAdd;
+			}
+		}
+	}
+	return formattedString;
+}
+
+/**
+ * Goal: This generates a confirm dialog in the middle of the screen 
+ * that follows scrolling by the user. Pressing the proceed button
+ * triggers a customized action by the user and then closes itself
+ * @param text
+ * this is the text to be printed as a message to the user. (String)
+ * @param proceedText
+ * this is the text to be displayed on the proceed button (String)
+ * @param cancelText
+ * this is the text to be displayed on the cancel button (String)
+ * @param action
+ * this is a function that will be executed when the user clicks on 
+ * the proceed button. The dialog is closed after the action as been
+ * executed
+ * @returns {DOM element}
+ * It returns a confirm dialog element to be appended anywhere. I suggest to
+ * the body. It will be deleted after the user clicks cancel or the proceed
+ * button
+ */
+function ConfirmDialog(text, proceedText, cancelText, action)
+{
+	var confirmdialog = document.createElement("div");
+	var confirmdialogtext = document.createElement("div");
+	confirmdialogtext.innerHTML = text;
+	var row = document.createElement("div");
+	var col1 = document.createElement("div");
+	var proceedbutton = document.createElement("a");
+	proceedbutton.innerHTML = proceedText;
+	
+	proceedbutton.onclick = function()
+	{
+		action();
+		confirmdialog.parentNode.removeChild(confirmdialog);
+	}
+	proceedbutton.href = "#";
+	var col2 = document.createElement("div");
+	var col3 = document.createElement("div");
+	var cancelbutton = document.createElement("a");
+	cancelbutton.innerHTML = cancelText;
+	cancelbutton.href = "#";
+	cancelbutton.onclick = function()
+	{
+		confirmdialog.parentNode.removeChild(confirmdialog);
+	}
+	confirmdialog.style = 
+			"position: fixed;\
+		  	left: 40%;\
+		  	top: 50%;\
+		  	z-index: 0;\
+		  	overflow: hidden;\
+		  	width: 20%;\
+		  	min-width: 250px;\
+		  	height: auto;\
+		  	border: 2px solid #e02727;\
+		  	border-radius: 2px;\
+		  	background-color: #fff;\
+		  	font-weight: 500;";
+	
+	confirmdialogtext.style = 
+			"display: block;\
+		  	margin-right: auto;\
+		  	margin-left: auto;\
+		  	padding-top: 5px;\
+		  	padding-bottom: 20px;\
+		  	height: auto;\
+		  	color: black;\
+		  	font-size: 14px;\
+		  	font-weight: 700;\
+		  	text-align: center;";
+	
+	row.style =
+	    	"margin-left: 0;\
+	    	margin-right: 0;\
+	    	background-color: white;";
+	
+	col1.style = 
+			"width: 48%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+			
+	col2.style = 
+			"width: 4%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+	
+	col3.style = 
+			"width: 48%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+	
+	proceedbutton.style =
+			"display: block;\
+		  	width: 90%;\
+			height: auto;\
+		  	padding: 8px 5px;\
+		  	margin: 5px 5%;\
+		  	float: none;\
+		  	border: 2px solid #000;\
+		  	border-radius: 4px;\
+		  	background-color: #00948e;\
+		  	color: white;\
+		  	font-size: 14px;\
+		  	text-decoration: none;\
+			cursor: pointer;\
+		  	text-align: center;";
+	
+	cancelbutton.style = 
+			"display: block;\
+		  	width: 90%;\
+			height: auto;\
+		  	padding: 8px 5px;\
+		  	margin: 5px 5%;\
+		  	float: none;\
+		  	border: 2px solid #000;\
+		  	border-radius: 4px;\
+		  	background-color: #00948e;\
+		  	color: white;\
+		  	font-size: 14px;\
+		  	text-decoration: none;\
+			cursor: pointer;\
+		  	text-align: center;";
+	
+	col3.appendChild(cancelbutton);
+	col1.appendChild(proceedbutton);
+	row.appendChild(col1);
+	row.appendChild(col2);
+	row.appendChild(col3);
+	confirmdialog.appendChild(confirmdialogtext);
+	confirmdialog.appendChild(row);
+	
+	return confirmdialog;
+}
+
+
+/**
+ * Goal: Customized info dialog box that appears in the middle
+ * of the screen and follows scrolling by the user. When the 
+ * proceed button is pressed, the dialog simply closes.
+ * @param text
+ * this is string that will be printed as information in the dialog
+ * box.
+ * @param proceedText
+ * The is a string that will be written on the button for closing
+ * the dialog box.
+ * @returns {DOM element}
+ * return the dialog element. It can be appended anywhere, but I 
+ * suggest to append it to the body
+ */
+function InfoDialog(text, proceedText)
+{
+	var confirmdialog = document.createElement("div");
+	var confirmdialogtext = document.createElement("div");
+	confirmdialogtext.innerHTML = text;
+	var row = document.createElement("div");
+	var col1 = document.createElement("div");
+	var proceedbutton = document.createElement("a");
+	proceedbutton.innerHTML = proceedText;
+	
+	proceedbutton.onclick = function()
+	{
+		confirmdialog.parentNode.removeChild(confirmdialog);
+	}
+	proceedbutton.href = "#";
+	var col2 = document.createElement("div");
+	var col3 = document.createElement("div");
+	
+	confirmdialog.style = 
+			"position: fixed;\
+		  	left: 40%;\
+		  	top: 50%;\
+		  	z-index: 0;\
+		  	overflow: hidden;\
+		  	width: 20%;\
+		  	min-width: 250px;\
+		  	height: auto;\
+		  	border: 2px solid #e02727;\
+		  	border-radius: 2px;\
+		  	background-color: #fff;\
+		  	font-weight: 500;";
+	
+	confirmdialogtext.style = 
+			"display: block;\
+		  	margin-right: auto;\
+		  	margin-left: auto;\
+		  	padding-top: 5px;\
+		  	padding-bottom: 20px;\
+		  	height: auto;\
+		  	color: black;\
+		  	font-size: 14px;\
+		  	font-weight: 700;\
+		  	text-align: center;";
+	
+	row.style =
+	    	"margin-left: 0;\
+	    	margin-right: 0;\
+	    	background-color: white;";
+	
+	col1.style = 
+			"width: 48%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+			
+	col2.style = 
+			"width: 4%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+	
+	col3.style = 
+			"width: 48%;\
+	  		position: relative;\
+			float: left;\
+			min-height: 1px;\
+			padding-left: 10px;\
+			padding-right: 10px;";
+	
+	proceedbutton.style =
+			"display: block;\
+		  	width: 90%;\
+			height: auto;\
+		  	padding: 8px 5px;\
+		  	margin: 5px 5%;\
+		  	float: none;\
+		  	border: 2px solid #000;\
+		  	border-radius: 4px;\
+		  	background-color: #00948e;\
+		  	color: white;\
+		  	font-size: 14px;\
+		  	text-decoration: none;\
+			cursor: pointer;\
+		  	text-align: center;";
+	
+	col1.appendChild(proceedbutton);
+	row.appendChild(col1);
+	row.appendChild(col2);
+	row.appendChild(col3);
+	confirmdialog.appendChild(confirmdialogtext);
+	confirmdialog.appendChild(row);
+	
+	return confirmdialog;
+}
+
 
