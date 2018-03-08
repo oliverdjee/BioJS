@@ -117,6 +117,60 @@ function Atom(group,name,element,coordinates)
 		}
 	}
 	
+	this.toPDB = function()
+	{
+		var group = self.group;
+		var type = group.Class;
+
+		var line = "";
+		if (group.isAminoAcid()) 
+		{
+			record = "ATOM  ";
+		}
+		else
+		{
+			record = "HETATM";
+		}
+
+		var code3 = group.type; 
+		var pdbcode = group.resNum.seqNum;
+		var inscode = group.resNum.insCode;
+		if(inscode === null){
+			inscode = " ";
+		}
+		var resNum     = FormatString(pdbcode+inscode, " ", 5, "right");
+		var atomNum		= FormatString(self.id.toString(), " ", 5, "right");	
+		var atomName   	= PDButil.FormatAtomName(self);
+		var resName		= FormatString(code3, " ", 3, "left");
+		var x       	= FormatNumberToString(self.coords[0],3," ",8 , "right");
+		var y           = FormatNumberToString(self.coords[1],3," ",8 , "right");
+		var z           = FormatNumberToString(self.coords[2],3," ",8 , "right");
+		var occupancy   = FormatNumberToString(self.occupancy,2," ",6 , "right");
+		var tempfactor  = FormatNumberToString(self.bfactor,2 ," ", 6 , "right");
+		var elem = self.element.toUpperCase();
+		
+		line += record;
+		line += atomNum;
+		line += " ";
+		line += atomName;
+		line += " "; // OR alternate Locate code
+		line += resName;
+		line += " "; 
+		line += group.chainID;
+		line += resNum;
+		line += "   ";
+		line += x;
+		line += y;
+		line += z;
+		line += occupancy;
+		line += tempfactor;
+		
+		line = FormatString(line," ",76, "left");
+		line += FormatString(elem," ",2, "right");
+		line = FormatString(line," ",80, "left");
+		line += PDButil.newLine;
+		return line;
+	}
 	
 	/**
 	 * @author Olivier
