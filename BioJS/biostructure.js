@@ -51,6 +51,7 @@ function Structure()
     		var atom = self.atoms[i];
     		pdbtext += atom.toPDB();	
     	}
+    	return pdbtext;
 	}
 	
 	this.addChain = function(chain)
