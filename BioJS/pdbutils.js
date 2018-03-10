@@ -68,8 +68,6 @@ const PDButil =
 		        document.body.removeChild(elem);
 		    }
 		}
-		var confirmbox = ConfirmDialog(text,"Download","Cancel",action);
-		document.body.appendChild(confirmbox);
-		
+		ConfirmDialog(text,"Download","Cancel",action);
 	}
 }
