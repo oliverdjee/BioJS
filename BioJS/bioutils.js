@@ -410,40 +410,35 @@ function containsObject(obj, list) {
  * @param progressBarElement
  * Optional: if you want to add a progress bar, pass the DOM bar element as an argument
  */
-async function InterruptedLoop(myFunc, array, startIndex, interval, delay, progressBarElement)
+function InterruptedLoop(myFunc, array, startIndex, delay, callback, progressBarElement)
 {
+	if(progressBarElement === undefined){progressBarElement = new ProgresDialog("Auto Generated Progress Bar...");}
+	
 	var length = array.length;
 	var index = startIndex;
 	var process = function() 
 	{
-		for (; index < length; index++) {
-			var toProcess = array[index];
-			myFunc(array[index]);
-			
-			if (index + 1 < length && index % interval == 0) {
-				if(progressBarElement !== undefined){Progress((index+1)/length);}
+		var toProcess = array[index];
+		myFunc(array[index]);
+		index++;
+		if (index < length)
+		{
+			progressBarElement.update(index+1,length);
+			if(index % 30 == 0)
+			{
 				setTimeout(process, delay);
 			}
+			else
+			{
+				process();
+			}
+		}
+		else
+		{
+			callback();
 		}
 	};
 	process();
-	
-	/**
-	 * PRIVATE FUNCTION
-	 */
-	
-	//NOT WORKING YET
-	function Progress(percentage)
-	{
-		var elem = progressBarElement;
-		var width = Math.floor(percentage*100);
-		if(width !== parseInt(elem.style.width.substring(0,elem.style.width.length-1))) //to remove the % sign at the end of the style.width
-		{
-			elem.style.width = width + '%';
-			//console.log(elem.style.width);
-		}
-		
-	}
 }
 
 /**
