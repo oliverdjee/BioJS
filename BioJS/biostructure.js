@@ -721,6 +721,8 @@ function Structure()
 			var atom = self.atoms[i];
 			atom.BuildImplicitH();
 		}
+
+		self.finalizeStructure(6,0.3);
 	}
 }
 
