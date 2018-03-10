@@ -47,7 +47,7 @@ function PDBurlReader(URL,callback,progressBar)
 	{
 	    content = text.split("\n");
 	    //console.log(content[1]);
-	    BuildStructure(name,content,callback,progressBar);
+	    BuildStructure(name,content,callback, new ProgressDialog("Building Structure..."));
 	};
 
 	function errorStructureHandler(event)
@@ -86,7 +86,7 @@ function PDBFileReader(file,callback,progressBar)
 	{
 	    content = event.target.result.split("\n");
 	    //console.log(content[1]);
-	    BuildStructure(name,content,callback,progressBar);
+	    BuildStructure(name,content,callback, new ProgressDialog("Building Structure..."));
 	};
 
 	function errorStructureHandler(event)
@@ -482,27 +482,28 @@ function getTimeStamp()
  * @param progressBar
  * Optional: pass the DOM element progress bar as an argument if you want to see the loading progress
  */
-async function BuildStructure(structureName,lines,callBack,progressBar)
+function BuildStructure(structureName,lines,callBack,progressBar)
 {
 	var StartDate = new Date();
 	var StartTime = StartDate.getTime();
 	var parser = new PDBFileParser();
 	parser.structure.name = structureName;
+	if(progressBar !== undefined){progressBar.show();}
 	/**
 	 * CONSTRUCTOR
 	 */
-	//building a new structure object line by line
-	var index = 0;
-	InterruptedLoop(ProcessData,lines,index,25,5,progressBar).then(
-			function()
-			{
-				parser.structure.finalizeStructure(6,0.3); //calling a 6 as argument will prevent finding cycle > 6 members
-			    var EndDate = new Date();
-				var EndTime = EndDate.getTime();
-				console.log("Built Structure in "+((EndTime - StartTime) /1000) + " seconds")
-			    callBack(parser.structure);
-			}
-	);
+	
+	var afterbuild = function()
+	{
+		parser.structure.finalizeStructure(6,0.3); //calling a 6 as argument will prevent finding cycle > 6 members
+	    var EndDate = new Date();
+		var EndTime = EndDate.getTime();
+		console.log("Built Structure in "+((EndTime - StartTime) /1000) + " seconds")
+	    callBack(parser.structure);
+	};
+	var startAt = 0;
+	
+	InterruptedLoop(ProcessData,lines,startAt,0, afterbuild, progressBar);
 	
 	/**
      * PRIVATE FUNCTIONS
