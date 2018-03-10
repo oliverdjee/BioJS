@@ -54,7 +54,7 @@
  * @param width
  * width of the viewer
  */
-function BioViewer(structure,name,height,width)
+function BioViewer(structure,name,element,height,width)
 {
 	var self = this;
 	this.width;
@@ -63,7 +63,7 @@ function BioViewer(structure,name,height,width)
 	this.engine; // Generate the BABYLON 3D engine
     this.Materials;
     this.scene;
-    
+    this.container = element
 	self.width = 0;
 	self.height = 0;
 	self.canvas = null;
@@ -84,26 +84,19 @@ function BioViewer(structure,name,height,width)
     	 self.engine.runRenderLoop(function () 
     		    	{ // Register a render loop to repeatedly render the scene
     		    		self.scene.render();
+    		        	document.body.style.cursor = "default";
     		    	});
     	window.addEventListener("resize", function () 
     		     	{ // Watch for browser/canvas resize events
     		        	self.engine.resize();
     		        });
+    	appendToDOM(self.container,height,width)
     	}
     );
 	
 	/**
 	 * PUBLIC FUNCTION
 	 */
-	this.appendToDOM = function(element,height,width)
-	{
-		self.height= height;
-		self.width=  width;
-		element.appendChild(self.canvas);
-		self.canvas.height = height;
-		self.canvas.width = width;
-		self.addHoverInfo(element);
-	}
 	
 	this.addHoverInfo = function(element)
     {	   	
@@ -269,6 +262,19 @@ function BioViewer(structure,name,height,width)
 	 * PRIVATE FUNCTION
 	 */
 	
+	function appendToDOM(element,height,width)
+	{
+		var startDate = new Date();
+		self.height= height;
+		self.width=  width;
+		element.appendChild(self.canvas);
+		self.canvas.height = height;
+		self.canvas.width = width;
+		self.addHoverInfo(element);
+		PrintElapsedTime(startDate, "Rendered to canvas in");
+		
+	}
+	
 	function UpdateAtom(atom)
     {
     	if(atom.selected)
@@ -311,7 +317,10 @@ function BioViewer(structure,name,height,width)
 	async function createScene()
 	{
 		var startDate = new Date();
-		
+		var ProgressBar = new ProgressDialog("Generating 3D System...");
+		ProgressBar.show();
+		var colorMode = "cpk"; // "cpk" or "uniform"
+		var viewMode = "ballnstick"; // "ballnstick" or "spacefill"
 		var atoms = structure.atoms;
 		var aMaterial = {};
 	    var center =  structure.centerOfMass;
@@ -319,8 +328,17 @@ function BioViewer(structure,name,height,width)
 	    var areaSize = structure.boxDimension;
 	    var particleSize = 1.0;
 	    var pickedAtom = null;
+	    var DEFAULT_COLORS = []
+	    var current_colors = [];
+	    var current_color = Math.floor(Math.random() * 56);
+    	for(var i = 0; i < structure.chains.length; i++)
+    	{
+    		DEFAULT_COLORS.push(structure.chains[i].id);
+    		current_colors.push(structure.chains[i].id);
+    	}
 		var scene = new BABYLON.Scene(self.engine);
-		scene.scale = 1/1.20; //Balls and sticks
+		scene.ballscale = 1.0/1.20; //Balls and sticks
+		scene.bondscale = 0.4; //Balls and sticks
 		self.scene = scene;
 		
 		scene.zoom = function(zoomFactor,center)
@@ -342,11 +360,15 @@ function BioViewer(structure,name,height,width)
 	    scene.selectedAtoms = [];
 	    var light = new BABYLON.PointLight("pl", camera.position, scene);
 	    light.intensity = 0.7;
-	    
+		light.specular = new BABYLON.Color3(0, 0, 0);
+		light.groundColor = new BABYLON.Color3(0, 0, 0);
+		
 	    camera.setPosition(new BABYLON.Vector3(center[0]-areaSize/1.66, center[1]-areaSize/1.66, center[2]-areaSize/1.66));
 	    
 	    InitMaterials();
-	    CreateAtoms().then(CreateBonds().then(function(){
+	    
+	    var AfterBuild = function()
+	    {
 	    	addAtomClicking();
 		    addSelectionZooming("z");
 		    addFullScreenToggle("f");
@@ -362,11 +384,16 @@ function BioViewer(structure,name,height,width)
 		    addIsolateButton("x");
 		    addHydrogensButton("p");
 		    addDownloadButton("o");
+		    addChangeViewButton("q");
+		    addChangeColorButton("w");
 		    //DEBUGGING
 		    addTestButton("r");
-		    PrintElapsedTime(startDate, "3D molecule displayed in")
-	    }));
+		    PrintElapsedTime(startDate, "3D molecule generated in");
+	    };
 	    
+	    CreateAtoms(CreateBonds);
+	    
+    	
 		/**
 		 * PULBIC FUNCTION
 		 */
@@ -377,8 +404,46 @@ function BioViewer(structure,name,height,width)
 	     * PRIVATE FUNCTIONS
 	     */
 	    
+	    function Rescale(mesh)
+	    {
+	    	if(viewMode==="ballnstick")
+	    	{
+	    		scene.ballscale = 1.0/1.2;
+	    		scene.bondscale = 0.6;
+	    		if(mesh.isAtom === true)
+	    		{
+	    			var scale = ELEMENTS.getVdwRadius(mesh.element) * scene.ballscale; //1.20 is set to see bonds
+	    	        mesh.scaling = new BABYLON.Vector3(scale,scale,scale);
+	    		}
+	    		if(mesh.isBond === true)
+	    		{
+	    			var diam = scene.bondscale;
+	    			mesh.diameterTop = diam;
+	    			mesh.diameterBottom = diam;
+	    		}
+	    	}
+	    	
+	    	else if(viewMode==="spacefill")
+	    	{
+	    		scene.ballscale = 1.2;
+	    		scene.bondscale = 0.4;
+	    		if(mesh.isAtom === true)
+	    		{
+	    			var scale = ELEMENTS.getVdwRadius(mesh.element) * scene.ballscale; //1.20 is set to see bonds
+	    	        mesh.scaling = new BABYLON.Vector3(scale,scale,scale);
+	    		}
+	    		if(mesh.isBond === true)
+	    		{
+	    			var diam = scene.bondscale;
+	    			mesh.diameterTop = diam;
+	    			mesh.diameterBottom = diam;
+	    		}
+	    	}
+	    }
+	    
 	    function InitMaterials()
 	    {
+	    	
 	    	aMaterial.Picked = new BABYLON.StandardMaterial("Pickedmat", scene);
 	    	aMaterial.Picked.diffuseColor = new BABYLON.Color4(1.0, 1.0, 0.1,1.0);
 	    	aMaterial.Hover = new BABYLON.StandardMaterial("Hovermat", scene);
@@ -386,7 +451,90 @@ function BioViewer(structure,name,height,width)
 	    	aMaterial.Hover.emissiveColor = new BABYLON.Color3(1.0, 0.41, 0.71);
 	    	aMaterial.Hidden = new BABYLON.StandardMaterial("Hiddenmat", scene);
 	    	aMaterial.Hidden.diffuseColor = new BABYLON.Color4(1.0, 1.0, 1.0,0);
-			self.Materials = aMaterial;
+			
+	    	aMaterial.getColor = function(index)
+			{
+	    		if(index == 0){return BABYLON.Color3.FromHexString("#FF420E");} // cool red
+	    		if(index == 1){return BABYLON.Color3.FromHexString("#598234");} // cool green
+	    		
+	    		if(index == 2){return BABYLON.Color3.FromHexString("#336B87");} // cool blue
+	    		if(index == 3){return BABYLON.Color3.FromHexString("#763626");} // cool rust
+	    		
+	    		if(index == 4){return BABYLON.Color3.FromHexString("#2A3132");} // cool dark
+	    		if(index == 5){return BABYLON.Color3.FromHexString("#66A5AD");} // cool blue
+	    		
+	    		if(index == 6){return BABYLON.Color3.FromHexString("#DE7A22");} // cool orange
+	    		if(index == 7){return BABYLON.Color3.FromHexString("#20948B");} // cool cyan
+	    		
+	    		if(index == 8){return BABYLON.Color3.FromHexString("#BCBABE");} // cool light gray
+	    		if(index == 9){return BABYLON.Color3.FromHexString("#1995AD");} // cool ice blue
+	    		
+	    		if(index == 10){return BABYLON.Color3.FromHexString("#F62A00");} // cool bright red
+	    		if(index == 11){return BABYLON.Color3.FromHexString("#F1F3CE");} // cool ivory
+	    		
+	    		if(index == 12){return BABYLON.Color3.FromHexString("#F52549");} // cool pink
+	    		if(index == 13){return BABYLON.Color3.FromHexString("#9BC01C");} // cool green
+
+	    		if(index == 14){return BABYLON.Color3.FromHexString("#002C54");} // cool dark blue
+	    		if(index == 15){return BABYLON.Color3.FromHexString("#CD7213");} // cool bronze
+	    		
+	    		if(index == 16){return BABYLON.Color3.FromHexString("#7CAA2D");} // cool green
+	    		if(index == 17){return BABYLON.Color3.FromHexString("#CB6318");} // cool bronze
+	    		
+	    		if(index == 18){return BABYLON.Color3.FromHexString("#34888C");} // cool blue
+	    		if(index == 19){return BABYLON.Color3.FromHexString("#F5E356");} // cool pastel yellow
+	    		
+	    		if(index == 20){return BABYLON.Color3.FromHexString("#556DAC");} // cool blue lapis
+	    		if(index == 21){return BABYLON.Color3.FromHexString("#F79B77");} // cool salmon
+	    		if(index == 22){return BABYLON.Color3.FromHexString("#755248");} // cool peppercorn
+
+	    		if(index == 23){return BABYLON.Color3.FromHexString("#000B29");} // cool night blue
+	    		if(index == 24){return BABYLON.Color3.FromHexString("#D70026");} // cool red
+	    		if(index == 25){return BABYLON.Color3.FromHexString("#F8F5F2");} // cool pearl
+
+	    		if(index == 26){return BABYLON.Color3.FromHexString("#E1315B");} // cool fuschia
+	    		if(index == 27){return BABYLON.Color3.FromHexString("#008DCB");} // cool blue
+	    		if(index == 28){return BABYLON.Color3.FromHexString("#EAB364");} // cool pale yellow
+
+	    		if(index == 29){return BABYLON.Color3.FromHexString("#A5C3CF");} // cool blue
+	    		if(index == 30){return BABYLON.Color3.FromHexString("#E59D5C");} // cool sand
+	    		if(index == 31){return BABYLON.Color3.FromHexString("#A99F3C");} // cool green
+	    		
+	    		if(index == 32){return BABYLON.Color3.FromHexString("#52908B");} // cool turquoise
+	    		if(index == 33){return BABYLON.Color3.FromHexString("#DDBC95");} // cool brown-purple
+	    		if(index == 34){return BABYLON.Color3.FromHexString("#E7472E");} // cool orange-red
+
+	    		if(index == 35){return BABYLON.Color3.FromHexString("#2F2E33");} // cool blue-black
+	    		if(index == 36){return BABYLON.Color3.FromHexString("#D5D6D2");} // cool gray
+	    		if(index == 37){return BABYLON.Color3.FromHexString("#3A5199");} // cool cobalt
+	    		
+	    		if(index == 38){return BABYLON.Color3.FromHexString("#E05858");} // cool light red
+	    		if(index == 39){return BABYLON.Color3.FromHexString("#D5C9B1");} // cool oatmeal
+	    		if(index == 40){return BABYLON.Color3.FromHexString("#5F968E");} // cool cyan
+	    		
+	    		if(index == 41){return BABYLON.Color3.FromHexString("#344D90");} // cool royal blue
+	    		if(index == 42){return BABYLON.Color3.FromHexString("#5CC5EF");} // cool light blue
+	    		if(index == 43){return BABYLON.Color3.FromHexString("#FFB745");} // cool yellow
+	    		if(index == 44){return BABYLON.Color3.FromHexString("#E7552C");} // cool orange
+
+	    		if(index == 45){return BABYLON.Color3.FromHexString("#444C5C");} // cool navy
+	    		if(index == 46){return BABYLON.Color3.FromHexString("#CE5A57");} // cool pale red
+	    		if(index == 47){return BABYLON.Color3.FromHexString("#78A5A3");} // cool gren blue
+	    		if(index == 48){return BABYLON.Color3.FromHexString("#E1B16A");} // cool light yellow
+	    		
+	    		if(index == 49){return BABYLON.Color3.FromHexString("#F55449");} // cool light red
+	    		if(index == 50){return BABYLON.Color3.FromHexString("#1B4B5A");} // cool blue
+	    		if(index == 51){return BABYLON.Color3.FromHexString("#8E7970");} // cool taupe
+	    		if(index == 52){return BABYLON.Color3.FromHexString("#A1D6E2");} // cool ice blue
+
+	    		if(index == 53){return BABYLON.Color3.FromHexString("#50312F");} // cool brown
+	    		if(index == 54){return BABYLON.Color3.FromHexString("#CB0000");} // cool red
+	    		if(index == 55){return BABYLON.Color3.FromHexString("#3F6C45");} // cool basil green
+	    		if(index == 56){return BABYLON.Color3.FromHexString("#E4EA8C");} // cool lemon-lime
+			}
+	    	
+	    	
+	    	self.Materials = aMaterial;
 	    }
 	    
 	    function StructureBuilder(atom, i)
@@ -400,6 +548,8 @@ function BioViewer(structure,name,height,width)
 	        particle.position.y = atom.coords[1];
 	        particle.position.z = atom.coords[2];
 	        particle.id = atom.id;
+	        particle.chainID = atom.group.chainID;
+	        particle.chainIndex = atom.group.chain.id;
 	        particle.selected = false;
 	        particle.groupselected = false;
 	        particle.chainselected = false;
@@ -408,14 +558,14 @@ function BioViewer(structure,name,height,width)
 	        var element = atom.element;
 	        particle.element = element;
 	        
-	        var scale = ELEMENTS.getVdwRadius(element) * scene.scale; //1.20 is set to see bonds
-	        particle.scaling = new BABYLON.Vector3(scale,scale,scale);
-	        
-	        var color = ELEMENTS.getColor(element);//Vector of size 3 (R,G,B);
-	        var atomcolor = new BABYLON.Color4(color[0],color[1],color[2],1.0);
-	        var material = new BABYLON.StandardMaterial(atom.id, scene);
-	        material.diffuseColor = atomcolor;
-	        particle.material = material;
+	        Rescale(particle);
+	        //var color = ELEMENTS.getColor(element);//Vector of size 3 (R,G,B);
+	        //var atomcolor = new BABYLON.Color4(color[0],color[1],color[2],1.0);
+	        //var material = new BABYLON.StandardMaterial(atom.id, scene);
+	        //material.diffuseColor = atomcolor;
+	        //particle.material = material;
+        	particle.chainColor = aMaterial.getColor(particle.chainIndex);
+	        Recolor(particle);
 	        
 	        particle.isPickable = true; 
 	    	
@@ -440,14 +590,16 @@ function BioViewer(structure,name,height,width)
 	    	atom.isDisplayed = true;
 	    }
 	    
-	    async function CreateBonds()
+	    function CreateBonds()
 	    {
-	    	InterruptedLoop(BondBuilder, atoms, 0, 25, 0);
+	    	ProgressBar.setRange(50,100);
+	    	InterruptedLoop(BondBuilder, atoms, 0, 0, AfterBuild, ProgressBar);
 	    }
 	    
-	    async function CreateAtoms()
+	    function CreateAtoms(callback)
 	    {
-	    	InterruptedLoop(StructureBuilder, atoms, 0, 25, 0);
+	    	ProgressBar.setRange(0,50);
+	    	InterruptedLoop(StructureBuilder, atoms, 0, 0, callback, ProgressBar);
 	    }
 	    
 	    function BondBuilder(atom)
@@ -481,7 +633,7 @@ function BioViewer(structure,name,height,width)
 	    {
 	    	var distance = getAtomDistance(atom1,atom2);
 	    	var bond = BABYLON.MeshBuilder.CreateCylinder("bond"+atom1.id+"_"+atom2.id,
-	    			{diameter:0.4, height: distance}, scene);
+	    			{diameter:scene.bondscale, height: distance}, scene);
 	    	bond.isAtom = false;
 		   	//bond.color = new BABYLON.Color4(0.2,0.2,0.2,1.0);
 		   	bond.atoms = []
@@ -524,6 +676,8 @@ function BioViewer(structure,name,height,width)
 	    
 	    function Recolor(sphere)
 	    {
+	    	if(sphere.isAtom === false){return;}
+	    	
 	    	//DEBUGGING PASSED
 	    	if(sphere.selected == true)
 	    	{
@@ -532,7 +686,25 @@ function BioViewer(structure,name,height,width)
 	    	}
 	    	else
 	    	{
-		    	var color = ELEMENTS.getColor(sphere.element);
+		    	var color = [0,0,0];
+	    		if(colorMode === "cpk")
+		    	{
+		    		if(sphere.element == "O" || sphere.element == "N" || sphere.element =="H")
+	    			{
+		    			color = ELEMENTS.getColor(sphere.element);
+	    			}
+		    		else
+		    		{
+		    			color = sphere.chainColor || aMaterial.getColor(DEFAULT_COLORS[sphere.chainIndex]);
+			    		color = [color.r,color.g,color.b];
+		    		}
+		    	}	
+		    	else if(colorMode === "uniform")
+		    	{
+		    		color = sphere.chainColor || 9;
+		    		color = [color.r,color.g,color.b];
+		    	}
+	    		
 		    	var atomcolor = new BABYLON.Color4(color[0],color[1],color[2],1.0);
 		        var material = new BABYLON.StandardMaterial("atomMat", scene);
 		        material.diffuseColor = atomcolor;
@@ -690,7 +862,8 @@ function BioViewer(structure,name,height,width)
 			        	{
 			        		atoms.push(structure.atoms[scene.selectedAtoms[i]]);
 			        	}
-			        	alert("Bfactor: "+calcBfactor(atoms));
+			        	InfoDialog("B-factor ("+atoms.length+" atoms): "
+			        			+FormatNumberToString(calcBfactor(atoms),2," ",10,"right"), "OK");
 			        }
 			    )
 	    	);
@@ -717,11 +890,12 @@ function BioViewer(structure,name,height,width)
 			        	if(atoms.length == 3)
 			        	{
 			        		var angle = AngleBetweenAtoms(atoms[0],atoms[1],atoms[2]);
-			        		alert("Angle: "+angle);
+			        		InfoDialog("Angle ("+atoms[0].name+"-"+atoms[1].name+"-"+atoms[2].name+"): "
+			        				+FormatNumberToString(angle,2," ",10,"right"),"OK");
 			        	}
 			        	else
 			        	{
-			        		alert("Please select 3 atoms");
+			        		InfoDialog("Please select only 3 atoms", "OK");
 			        	}
 			        }
 			    )
@@ -744,12 +918,13 @@ function BioViewer(structure,name,height,width)
 			        	}
 			        	if(atoms.length == 2)
 			        	{
-			        		var dist = getDistance(atoms[0],atoms[1]);
-			        		alert("Distance: "+dist);
+			        		var dist = getAtomDistance(atoms[0],atoms[1]);
+			        		InfoDialog("Distance ("+atoms[0].name+"-"+atoms[1].name+"): "
+			        				+FormatNumberToString(dist,2," ",10,"right"),"OK");
 			        	}
 			        	else
 			        	{
-			        		alert("Please select 2 atoms");
+			        		InfoDialog("Please select only 2 atoms","OK");
 			        	}
 			        }
 			    )
@@ -772,11 +947,11 @@ function BioViewer(structure,name,height,width)
 			        	}
 			        	if(atoms.length == 1)
 			        	{
-			        		alert("Printing Atom Attributes:\n"+atoms[0].printInfo("text"));
+			        		InfoDialog("Printing Atom Attributes:<br>"+atoms[0].printInfo("html"),"OK");
 			        	}
 			        	else
 			        	{
-			        		alert("Please select 1 atom");
+			        		InfoDialog("Please select only 1 atom","OK");
 			        	}
 			        }
 			    )
@@ -800,11 +975,12 @@ function BioViewer(structure,name,height,width)
 			        	if(atoms.length == 4)
 			        	{
 			        		var angle = TorsionBetweenAtoms(atoms[0],atoms[1],atoms[2],atoms[3]);
-			        		alert("Torsion: "+angle);
+			        		InfoDialog("Torsion angle ("+atoms[0].name+"-"+atoms[1].name+"-"+atoms[2].name+"-"+atoms[3].name+"): "
+			        				+FormatNumberToString(angle,2," ",10,"right"),"OK");
 			        	}
 			        	else
 			        	{
-			        		alert("Please select 4 atoms");
+			        		InfoDialog("Please select only 4 atoms", "OK");
 			        	}
 			        }
 			    )
@@ -1005,10 +1181,88 @@ function BioViewer(structure,name,height,width)
 			    )
 	    	);
 	    }
+	    
+	    function addChangeViewButton(key)
+	    {
+	    	scene.actionManager.registerAction(
+			    new BABYLON.ExecuteCodeAction(
+			        {
+			            trigger: BABYLON.ActionManager.OnKeyUpTrigger,
+			            parameter: key
+			        },
+			        function () 
+			        {	
+			        	if(viewMode === "spacefill"){viewMode = "ballnstick";}
+		        		else if(viewMode === "ballnstick"){viewMode = "spacefill";}
+			        	if(scene.selectedAtoms.length === 0)
+			        	{ 	
+			        		for(var i = 0; i < scene.meshes.length; i++)
+				        	{
+				        		var mesh = scene.meshes[i]; 
+				        		Rescale(mesh);
+				        	}
+			        	}
+			        	else if(scene.selectedAtoms.length > 0)
+			        	{ 	
+			        		for(var i = 0; i < scene.selectedAtoms.length; i++)
+				        	{
+				        		var mesh = scene.meshes[scene.selectedAtoms[i]]; 
+				        		Rescale(mesh);
+				        	}
+			        	}
+			        }
+			    )
+	    	);
+	    }
+	    
 	    /**
 	     * THIS FUNCTION IS STRICLY FOR DEBUGGING PURPOSES
 	     */
 	   
+	    function addChangeColorButton(key)
+	    {
+	    	scene.actionManager.registerAction(
+			    new BABYLON.ExecuteCodeAction(
+			        {
+			            trigger: BABYLON.ActionManager.OnKeyUpTrigger,
+			            parameter: key
+			        },
+			        function () {
+			        	if(colorMode === "uniform"){colorMode = "cpk";}
+			        	else if(colorMode === "cpk")
+			        	{
+			        		colorMode = "uniform";
+				        	current_colors = [];
+				        	current_color = Math.floor(Math.random() * 56);
+				        	for(var i = 0; i < structure.chains.length; i++)
+				        	{
+				        		current_colors.push(Math.floor(Math.random() * 56));
+				        	}
+			        	}
+			        	
+			        	if(scene.selectedAtoms.length === 0)
+			        	{ 	
+			        		for(var i = 0; i < scene.meshes.length; i++)
+				        	{
+			        			var mesh= scene.meshes[i];
+			        			mesh.chainColor = aMaterial.getColor(current_colors[mesh.chainIndex]);
+				        		Recolor(mesh);
+				        	}
+			        	}
+			        	else if(scene.selectedAtoms.length > 0)
+			        	{ 	
+			        		for(var i = 0; i < scene.selectedAtoms.length; i++)
+				        	{
+			        			var mesh = scene.meshes[scene.selectedAtoms[i]];
+			        			mesh.chainColor = aMaterial.getColor(current_color);
+				        		Recolor(mesh);
+				        	}
+			        	}
+			        }
+			    )
+	    	);
+	    }
+	    
 	    function addTestButton(key)
 	    {
 	    	scene.actionManager.registerAction(
@@ -1018,14 +1272,7 @@ function BioViewer(structure,name,height,width)
 			            parameter: key
 			        },
 			        function () {
-			        	var atoms = [];
-			        	var pdbtext = "";
-			        	for(var i = 0; i < scene.selectedAtoms.length;i++)
-			        	{
-			        		var atom = structure.atoms[scene.meshes[scene.selectedAtoms[i]].id];
-			        		pdbtext += atom.toPDB();	
-			        	}
-			        	PDButil.saveAs(structure.name+".pdb",pdbtext);
+			        	
 			        }
 			    )
 	    	);
