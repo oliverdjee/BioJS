@@ -464,6 +464,7 @@ function FormatNumberToString(number, decimals, charToAdd, finalLength, alignmen
  */
 function ConfirmDialog(text, proceedText, cancelText, action)
 {
+	var cover = document.createElement("div");
 	var confirmdialog = document.createElement("div");
 	var confirmdialogtext = document.createElement("div");
 	confirmdialogtext.innerHTML = text;
@@ -475,6 +476,7 @@ function ConfirmDialog(text, proceedText, cancelText, action)
 	proceedbutton.onclick = function()
 	{
 		action();
+		confirmdialog.parentNode.removeChild(cover);
 		confirmdialog.parentNode.removeChild(confirmdialog);
 	}
 	proceedbutton.href = "#";
@@ -485,8 +487,21 @@ function ConfirmDialog(text, proceedText, cancelText, action)
 	cancelbutton.href = "#";
 	cancelbutton.onclick = function()
 	{
+		confirmdialog.parentNode.removeChild(cover);
 		confirmdialog.parentNode.removeChild(confirmdialog);
 	}
+	
+	cover.style =
+		"display: block;\
+		position: fixed;\
+		left: 0px;\
+		top: 0px;\
+		z-index: 0;\
+		background-color: gray;\
+		opacity: 0.5;\
+		width: 100%;\
+		height: 100%;";
+	
 	confirmdialog.style = 
 			"position: fixed;\
 		  	left: 40%;\
@@ -581,8 +596,8 @@ function ConfirmDialog(text, proceedText, cancelText, action)
 	row.appendChild(col3);
 	confirmdialog.appendChild(confirmdialogtext);
 	confirmdialog.appendChild(row);
-	
-	return confirmdialog;
+	document.body.appendChild(cover);
+	document.body.appendChild(confirmdialog);
 }
 
 
@@ -602,6 +617,7 @@ function ConfirmDialog(text, proceedText, cancelText, action)
  */
 function InfoDialog(text, proceedText)
 {
+	var cover = document.createElement("div");
 	var confirmdialog = document.createElement("div");
 	var confirmdialogtext = document.createElement("div");
 	confirmdialogtext.innerHTML = text;
@@ -612,18 +628,31 @@ function InfoDialog(text, proceedText)
 	
 	proceedbutton.onclick = function()
 	{
+		confirmdialog.parentNode.removeChild(cover);
 		confirmdialog.parentNode.removeChild(confirmdialog);
 	}
 	proceedbutton.href = "#";
 	var col2 = document.createElement("div");
 	var col3 = document.createElement("div");
 	
+	cover.style =
+			"display: block;\
+			position: fixed;\
+			left: 0px;\
+			top: 0px;\
+			z-index: 0;\
+			background-color: gray;\
+			opacity: 0.5;\
+			width: 100%;\
+			height: 100%;";
+	
 	confirmdialog.style = 
 			"position: fixed;\
 		  	left: 40%;\
-		  	top: 50%;\
+		  	top: 30%;\
 		  	z-index: 0;\
-		  	overflow: hidden;\
+		  	max-height: 350px;\
+		  	overflow-y: scroll;\
 		  	width: 20%;\
 		  	min-width: 250px;\
 		  	height: auto;\
@@ -634,6 +663,7 @@ function InfoDialog(text, proceedText)
 	
 	confirmdialogtext.style = 
 			"display: block;\
+			text-align: left;\
 		  	margin-right: auto;\
 		  	margin-left: auto;\
 		  	padding-top: 5px;\
@@ -641,8 +671,7 @@ function InfoDialog(text, proceedText)
 		  	height: auto;\
 		  	color: black;\
 		  	font-size: 14px;\
-		  	font-weight: 700;\
-		  	text-align: center;";
+		  	font-weight: 700;";
 	
 	row.style =
 	    	"margin-left: 0;\
@@ -695,8 +724,144 @@ function InfoDialog(text, proceedText)
 	row.appendChild(col3);
 	confirmdialog.appendChild(confirmdialogtext);
 	confirmdialog.appendChild(row);
-	
-	return confirmdialog;
+	document.body.appendChild(cover);
+	document.body.appendChild(confirmdialog);
 }
 
+function ProgressDialog(text)
+{
+	var self = this;
+	this.progress = 0;
+	this.range = {min:0,max:100};
+	var cover = document.createElement("div");
+	var progressdialog = document.createElement("div");
+	var progressdialogtext = document.createElement("div");
+	var frame = document.createElement("div");
+	var bar = document.createElement("div");
+	progressdialogtext.innerHTML = text;
+	
+	this.setInnerText = function(text)
+	{
+		frame.innerHTML = text;
+	}
+	this.setRange = function(min,max)
+	{
+		self.range.min = min;
+		self.range.max = max;
+	}
+	this.update = function(value,total)
+	{
+		var percentage = value/total*100;
+		percentage = (percentage * self.range.max / 100);
+		if(percentage == self.progress){return;}
+		self.progress = percentage;
+		
+		if(percentage == 100)
+		{
+			self.close();
+		}
+		else
+		{
+			bar.innerHTML = value+"/"+total;
+			bar.style.width = percentage+"%";
+		}
+	}
+	this.getProgressBar = function()
+	{
+		return bar;
+	}
+	
+	this.getProgress = function()
+	{
+		return self.progress;
+	}
+	this.show = function()
+	{
+		cover.style.display = "block";
+		progressdialog.style.display = "block";
+	}
+	this.hide = function()
+	{
+		cover.style.display = "none";
+		progressdialog.style.display = "none";
+	}
+	this.close = function()
+	{
+		if(cover !== null && progressdialog !== null)
+		{
+			progressdialog.parentNode.removeChild(cover);
+			progressdialog.parentNode.removeChild(progressdialog);
+		}
+	}
+	
+	cover.style =
+			"display: none;\
+			position: fixed;\
+			left: 0px;\
+			top: 0px;\
+			z-index: 0;\
+			background-color: gray;\
+			opacity: 0.5;\
+			width: 100%;\
+			height: 100%;";
+	
+	progressdialog.style = 
+			"display: none;\
+			position: fixed;\
+		  	left: 40%;\
+		  	top: 30%;\
+		  	z-index: 0;\
+		  	max-height: 350px;\
+		  	overflow: hidden;\
+		  	width: 20%;\
+		  	min-width: 250px;\
+		  	height: auto;\
+		  	border: 2px solid #e02727;\
+		  	border-radius: 2px;\
+		  	background-color: #fff;\
+		  	font-weight: 500;";
+	
+	progressdialogtext.style = 
+			"display: block;\
+			text-align: left;\
+		  	margin-right: auto;\
+		  	margin-left: auto;\
+		  	padding-top: 5px;\
+		  	padding-left: 10px;\
+		  	padding-bottom: 20px;\
+		  	height: auto;\
+		  	color: black;\
+		  	font-size: 14px;\
+		  	font-weight: 700;";
+	
+	frame.style =
+			"display: block;\
+		  	width: 90%;\
+			height: auto;\
+		  	padding: 2px 2px;\
+		  	margin: 2px 5%;\
+		  	float: none;\
+		  	border: 2px solid #000;\
+		  	border-radius: 4px;\
+		  	background-color: white;";
+	
+	bar.style =
+			"display: block;\
+		  	width: "+self.progress+"%;\
+			height: 20px;\
+		  	float: none;\
+		  	border: 2px solid #000;\
+		  	border-radius: 4px;\
+		  	background-color: #00FF00;\
+		  	color: black;\
+		  	font-size: 14px;\
+		  	text-decoration: none;\
+		  	text-align: left;";
+		
+	frame.appendChild(bar);
+	progressdialog.appendChild(progressdialogtext);
+	progressdialog.appendChild(frame);
+	document.body.appendChild(cover);
+	document.body.appendChild(progressdialog);
+}
 
