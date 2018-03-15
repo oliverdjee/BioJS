@@ -1,0 +1,91 @@
+.bioslidercontainer {
+    width: 100%; /* Width of the outside container */
+}
+
+.bioslider {
+    -webkit-appearance: none;  /* Override default CSS styles */
+    appearance: none;
+    width: calc(100% - 73px);
+    height: 16px;
+    padding: 0;
+    background: #D5C9B1; /* Oatmeal background! */
+    outline: none;
+    opacity: 1.0;
+    -webkit-transition: .2s;
+    transition: opacity .2s; /* my cool animation*/
+}
+
+.bioslider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px; /* Set a specific slider handle width */
+    height: 26px; /* Slider handle height */
+    background: #444C5C; /*cool navy blue*/
+    cursor: pointer;
+}
+
+.bioslider::-webkit-slider-thumb:hover {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px; /* Set a specific slider handle width */
+    height: 30px; /* Slider handle height */
+    background: #A1D6E2; /*cool ice blue*/
+    cursor: pointer;
+}
+
+.bioslider:active::-webkit-slider-thumb {
+    background: #A1D6E2; /*cool ice blue*/
+}
+
+.bioslider::-moz-range-thumb {
+    width: 15px;
+    height: 26px;
+    background: #444C5C; /*cool navy blue*/
+    cursor: pointer;
+}
+
+.bioslider::-moz-range-thumb:hover {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px; /* Set a specific slider handle width */
+    height: 30px; /* Slider handle height */
+    background: #A1D6E2; /*cool ice blue*/
+    cursor: pointer;
+}
+
+.bioslider:active::-moz-range-thumb {
+    background: #A1D6E2; /*cool ice blue*/
+}
+
+.bioslidervalue {
+  display: inline-block;
+  position: relative;
+  width: 60px;
+  color: #fff;
+  top: -4px;
+  line-height: 20px;
+  height:30px;
+  text-align: center;
+  border-radius: 3px;
+  background: #444C5C; /*cool navy blue*/;
+  padding: 5px 10px;
+  margin-left: 8px;
+}
+.bioslidervalue:after 
+{
+    position: absolute;
+    top: 8px;
+    left: -7px;
+    width: 0;
+    height: 0;
+    border-top: 7px solid transparent;
+    border-right: 7px solid #444C5C; /*cool navy blue*/
+    border-bottom: 7px solid transparent;
+    box-sizing: border-box;
+    content: '';
+}
+
+.biomotifColumn
+{
+	height: calc(100% - 75px);
+}
