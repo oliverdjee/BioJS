@@ -30,7 +30,7 @@
  */
 function getAtomSquaredDistance(atom1,atom2)
 {
-	return (Math.pow(atom1.coords[0] - atom2.coords[0],2)+Math.pow(atom1.coords[1] - atom2.coords[1],2)+Math.pow(atom1.coords[2] - atom2.coords[2],2));
+	return GEOMETRY.PointSqrDistance(atom1.coords,atom2.coords);
 }
 
 function getAtomDistance(atom1,atom2)
@@ -40,6 +40,84 @@ function getAtomDistance(atom1,atom2)
 	return Math.sqrt(GEOMETRY.PointSqrDistance(coords1,coords2));
 }
 
+/**
+ * IMPROVE: When the Assignation of Fucntional group is implemented,
+ * I will assign bond length based on functional groups and partial double bonds
+ * Since those length will change depending on the delocalization of atoms
+ * 
+ * Goal validate bond length between atoms for bond 
+ * assignment. this is based on predefined tables in the ELEMENTS constant
+ * @param element1
+ * String representing the element of the atom 1
+ * @param element2
+ * String representing the element of the atom 2
+ * @param bondType
+ * "double", "single" or "triple"
+ * @param distanceToValidate
+ * distance between both atoms to test
+ * @return {Boolean}
+ * returns a boolean true if the atoms are within a tolerated window near 
+ * the expected bond length. False, if they are too far apart to create 
+ * the bond tpe specified, accordinf to the bond length table in bioelement.js
+ */
+function ValidateBondLength(atom1,atom2,bondType)
+{
+	var element1 = atom1.element;
+	var element2 = atom2.element;
+	var dToV = getAtomDistance(atom1,atom2);
+	if(element1 == "C" && element2 == "C")
+	{
+		if(bondType === "single")
+		{
+			return (dToV > (1.38+1.54)/2 && dToV < 1.65) ? true:false;
+		}
+		else if(bondType === "double")
+		{
+			return (dToV <= (1.38+1.54)/2 && dToV > (1.38+1.20)/2) ? true:false;
+		}
+		else if(bondType === "triple")
+		{
+			return (dToV <= (1.38+1.20)/2 && dToV > 1.10) ? true:false;
+		}
+	}
+	else if(element1 == "C" && element2 == "O"
+		||element2 == "C" && element1 == "O")
+	{
+		if(bondType === "single")
+		{
+			return (dToV > (1.21+1.43)/2 && dToV < 1.55) ? true:false;
+		}
+		else if(bondType === "double")
+		{
+			return (dToV <= (1.21+1.43)/2 && dToV > 1.10) ? true:false;
+		}
+		else if(bondType === "triple")
+		{
+			return true;
+			// NOT IMPLEMENTED YET
+		}
+	}
+	
+	else if(element1 == "C" && element2 == "N" 
+		|| element2 == "C" && element1 == "N")
+	{
+		if(bondType === "single")
+		{
+			return (dToV > (1.25+1.47)/2 && dToV < 1.57) ? true:false;
+		}
+		else if(bondType === "double")
+		{
+			return (dToV <= (1.25+1.47)/2 && dToV > (1.25+1.16)/2) ? true:false;
+		}
+		else if(bondType === "triple")
+		{
+			return (dToV <= (1.25+1.16)/2 && dToV > 1.05) ? true:false;
+		}	
+	}
+	new BioError(BIOERRORS.LOG_TO_CONSOLE,BIOERRORS.BOND,[atom1,atom2], "Request to ValidateBondLength Not Good: What is "+bondType+"?");
+	return false;
+	
+}
 /**
  * Goal:Obtain center of mass of specific atoms
  * @param atoms
