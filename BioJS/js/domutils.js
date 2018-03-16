@@ -660,7 +660,7 @@ function InfoDialog(text, proceedText)
 		  	top: 50%;\
 		  	transform: translate(-50%, -50%);\
 		  	z-index: 0;\
-		  	max-height: 350px;\
+		  	max-height: 375px;\
 		  	width: 20%;\
 		  	min-width: 250px;\
 		  	height: auto;\
@@ -767,7 +767,7 @@ function ProgressDialog(text)
 		
 		if(percentage == 100)
 		{
-			self.close();
+			self.kill();
 		}
 		else
 		{
@@ -794,13 +794,18 @@ function ProgressDialog(text)
 		cover.style.display = "none";
 		progressdialog.style.display = "none";
 	}
-	this.close = function()
+	this.kill = function()
 	{
 		if(cover !== null && progressdialog !== null)
 		{
 			progressdialog.parentNode.removeChild(cover);
 			progressdialog.parentNode.removeChild(progressdialog);
 		}
+	}
+	
+	this.setMessage = function(text)
+	{
+		progressdialogtext.innerHTML = text;
 	}
 	
 	cover.style =
