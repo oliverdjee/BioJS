@@ -22,6 +22,7 @@
 function Atom(group,name,element,coordinates)
 {
 	var self = this;
+	this.errorlog = "atom "+name+" of " + group.name;
 	this.selected = false;
 	this.box = null;
 	this.asa = null;
@@ -48,23 +49,6 @@ function Atom(group,name,element,coordinates)
 	 * PUBLIC FUNCTIONS
 	 */
 	
-	/**
-	 * @user
-	 * This function requires prior bonding call in the
-	 * structure object, as described in biostructure.js
-	 * as structure.BondAtoms()
-	 * 
-	 * In other words, the bond array of the atom must have been 
-	 * properly set, otherwise, do not trust the results
-	 * 
-	 * This function also heavily relies on angles between atoms,
-	 * which can be erroneous in PDB files. To prevent weird hybridization
-	 * an average is made over all partners, in hope that the out-lier 
-	 * partner will be discarded.
-	 * @return {Array[2]}
-	 * array[0] = angle
-	 * array[1] = hybridization string
-	 */
 	this.addAltLoc = function(atom)
 	{
 		if(self.altLoc == null)
@@ -109,7 +93,7 @@ function Atom(group,name,element,coordinates)
 		
 		for(var x = 0; x < newAtoms.length && x < number;x++)
 		{
-			var newAtom = new Atom(atom.group,"H0"+x,"H",newAtoms[x]);
+			var newAtom = new Atom(atom.group,PDButil.RenameHydrogen(atom,x),"H",newAtoms[x]);
 			atom.explicitH ++;
 			atom.group.addAtom(newAtom);
 			atom.bonds.push(newAtom.id);
@@ -182,6 +166,21 @@ function Atom(group,name,element,coordinates)
 	 * 
 	 * 					I also assume that a O terminal (only bonded to 1 atom) next to an SP2 carbon
 	 * 					is SP2 as well, and will double bond with it
+	 *
+	 * This function requires prior bonding call in the
+	 * structure object, as described in biostructure.js
+	 * as structure.BondAtoms()
+	 * 
+	 * In other words, the bond array of the atom must have been 
+	 * properly set, otherwise, do not trust the results
+	 * 
+	 * This function also heavily relies on angles between atoms,
+	 * which can be erroneous in PDB files. To prevent weird hybridization
+	 * an average is made over all partners, in hope that the out-lier 
+	 * partner will be discarded.
+	 * @return {Array[2]}
+	 * array[0] = angle
+	 * array[1] = hybridization string
 	 */
 	this.assignHybridization = function()
 	{	
@@ -216,7 +215,7 @@ function Atom(group,name,element,coordinates)
 				return [null,"SP3"]
 			}
 			
-			if(self.inRing()[0] && isRingPlanar(self.structure,self.ring,5))
+			else if(self.inRing()[0] && isRingPlanar(self.structure,self.ring,10))
 			{
 				self.hybridization = "SP2";
 				return [null,"SP2"];
@@ -231,7 +230,12 @@ function Atom(group,name,element,coordinates)
 			{
 				var atom1 = atoms[bonds[i]];
 				var atomCenter = self;
-				if(atomCenter.id == atom1.id){continue;} // THIS SHOULD NOT HAPPEN IF BONDS ARE PROPERLY ASSIGNED IN THE FIRST PLACE
+				if(atomCenter.id == atom1.id){
+					atom1.structure.LogError(BIOERRORS.LOG_TO_ALERT,new BioError(BIOERRORS.BONDING,
+							[atomCenter,atom1],"FATAL!!! Atoms share same id, implying self-bonding: will cause error"));
+					//MAYBE I SHOULD DELETE THE ATOM??
+					continue;
+					}
 				for(var x = i+1; x < bonds.length; x++)
 				{
 					var atom3 = atoms[bonds[x]];
@@ -250,10 +254,6 @@ function Atom(group,name,element,coordinates)
 		{
 			var nextAtom = atoms[bonds[0]];
 			var nextBonds = nextAtom.bonds;
-			if(self.group.name == "A_1")
-			{
-				console.log("Atom: "+self.name+" Group: "+self.group.name);
-			}
 			var hyb = nextAtom.hybridization || nextAtom.assignHybridization()[1];
 			if(hyb != null && hyb == "SP3" && ELEMENTS.getPeriod(nextAtom.element) == 2)
 			{
@@ -262,7 +262,7 @@ function Atom(group,name,element,coordinates)
 			}
 			else if(hyb != null && hyb == "SP2" && nextAtom.element == "C")
 			{
-				if(nextAtom.inRing()[0] && isRingPlanar(nextAtom.structure,nextAtom.ring,5))
+				if(nextAtom.inRing()[0] && isRingPlanar(nextAtom.structure,nextAtom.ring,10))
 				{
 					self.hybridization = "SP3";
 					return [null,"SP3"];
@@ -288,11 +288,45 @@ function Atom(group,name,element,coordinates)
 		{
 			if(self.element !== "N") // Nitrogen is SP2 by default because of tunneling of lone pair
 			{
+				self.structure.LogError(new BioError(
+						BIOERRORS.LOG_TO_INTERNAL,
+						BIOERRORS.HYBRIDIZATION,
+						[self],
+						"SP2 hybridized, but no SP2 neighbor atoms detected"));
 				self.hybridization = "SP3";
 			}
+			RemoveIdFromDeloc();
 			self.deloc = null;
 			
 		}
+		else if(self.deloc.length > 1 && self.doublebonds.length == 0)
+		{
+			if(self.element !== "N" 
+				&& self.element !== "O"
+				&& self.hybridization == "SP2")
+			{
+				self.structure.LogError(new BioError(
+						BIOERRORS.LOG_TO_INTERNAL,
+						BIOERRORS.HYBRIDIZATION,
+						[self],
+						"SP2 hybridized, but no double bonds detected"));
+				self.hybridization = "SP3";
+				RemoveIdFromDeloc();
+				self.deloc = null;
+			}
+		}
+		
+		function RemoveIdFromDeloc()
+		{
+			for(var i = 0; i < self.deloc.length;i++)
+			{
+				var atom = self.structure.atoms[self.deloc[i]];
+				if(atom.id === self.id){continue;}
+				var index = atom.deloc.indexOf(self.id);
+				if(index > -1){atom.deloc.splice(index,1);}
+			}
+		}
+		
 	}
 	
 	/**
