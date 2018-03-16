@@ -43,7 +43,7 @@ function ReadPDBurl(URL,callback)
 	{
 	    var content = text.split("\n");
 	    //console.log(content[1]);
-	    BuildStructure(name,content,callback, new ProgressDialog("Building Structure: "+name+"..."));
+	    BuildStructure(name,content,callback, new ProgressDialog("Assimilating PDB file "+name+"..."));
 	};
 
 	function errorStructureHandler(event)
@@ -81,7 +81,7 @@ function ReadPDBfile(file,callback)
 	{
 	    var content = event.target.result.split("\n");
 	    //console.log(content[1]);
-	    BuildStructure(name,content,callback, new ProgressDialog("Building Structure: "+name+"..."));
+	    BuildStructure(name,content,callback, new ProgressDialog("Assimilating PDB file "+name+"..."));
 	};
 
 	function errorStructureHandler(event)
@@ -483,7 +483,8 @@ function BuildStructure(structureName,lines,onStructureReady,progressBar)
 	var StartTime = StartDate.getTime();
 	var parser = new PDBFileParser();
 	parser.structure.name = structureName;
-	if(progressBar !== undefined){progressBar.show();}
+	if(progressBar !== undefined){
+		progressBar.show();}
 	/**
 	 * CONSTRUCTOR
 	 */
