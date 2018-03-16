@@ -2,6 +2,32 @@ const PDButil =
 {
 	newLine:"\n",
 	
+	RenameHydrogen: function(atom,index)
+	{
+		var base = "H";
+		if(atom.name.length == 1)
+		{
+			base = base + atom.name + index;
+		}
+		else if(atom.name.length == 2)
+		{
+			base = base + atom.name[1] + index;
+		} 
+		else if (atom.name.length == 3)
+		{
+			base = base + atom.name[1] + atom.name[2] + index;
+		}
+		else
+		{
+			base = base +"0"+index;
+			atom.structure.LogError(new BioError(
+					BIOERRORS.LOG_TO_INTERNAL,
+					BIOERRORS.NAME,[atom],
+					"Cannot assign name of built hydrogen du to too long name of this atom"));
+		} 
+		return base;
+	},
+	
 	FormatAtomName: function(atom) 
 	{
 		var name = atom.name;
@@ -12,11 +38,11 @@ const PDButil =
 		}
 		else if(name.length == 3 && isNaN(parsed))
 		{
-			name = FormatString(name," ", 4, "left");
+			name = FormatString(name," ", 4, "right");
 		}
 		else if(name.length == 3 && !isNaN(parsed))
 		{
-			name = FormatString(name," ", 4, "right");
+			name = FormatString(name," ", 4, "left");
 		}
 		else if(name.length == 2 && !isNaN(parsed))
 		{
@@ -28,7 +54,7 @@ const PDButil =
 		}
 		else
 		{
-			name = FormatString(" "+name, 4, "left");
+			name = FormatString(" "+name," ", 4, "left");
 		}
 		return name;
 	},
