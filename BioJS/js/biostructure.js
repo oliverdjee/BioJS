@@ -11,7 +11,7 @@
  *  
  *  ->  Improve the toPDB() function for wrting a structure to a PDB file. That could include 
  *  writing Headers, and Atoms, and all other records. For now, only Atoms can
- *  be written to PDBs. 
+ *  be written to PDBs. It is also a bit messed up.
  */
 
 
@@ -37,11 +37,22 @@ function Structure()
 	this.groups			= [];
 	this.id = null; // not implemented yet
 	this.biologicalAssembly = null; //true or false, not implemented yet
-	
-	
+	this.ringDetectionSizeLimit = 8; // will detect rigns by default up until 8 memebered rings
+	this.bondDetectionTolerance = 0.3; // allow atoms to be (atom1_VDW + atom2_VDW + 0.3) Angstrom apart to be bonded (default value) 
+	this.errors = [];
 	/**
 	 * PUBLIC FUNCTIONS
 	 */
+	
+	/**
+	 * See the BioError class in bioerror.js for which types are available
+	 * and their respective syntax. They can be refereed by the public
+	 * functions in BioError class.
+	 */
+	this.LogError = function(bioerror)
+	{
+		self.errors.push(bioerror);
+	}
 	
 	this.toPDB = function()
 	{
@@ -61,15 +72,25 @@ function Structure()
 		self.chains.push(chain);
 	}
 	
+	/**
+	 * All final preparation steps are bunched together here in this function to allow easy 
+	 * hybridization, bonding and ring detection as well as implicit hydrogens attribution in the proper
+	 * order.
+	 * 
+	 * @param ring_maxsize (optional, default 8)
+	 * for detection of rings up until this value {Number}
+	 * @param bond_buffer (optional, default 0.3)
+	 * for tolerance of bond detection when bonding atoms. {Number}
+	 */
 	this.finalizeStructure = function(ring_maxsize,bond_buffer)
 	{
-		if(ring_maxsize == null)
+		if(ring_maxsize === undefined)
 		{
-			ring_maxsize = 6;
+			ring_maxsize = self.ringDetectionSizeLimit;
 		}
-		if(bond_buffer == null)
+		if(bond_buffer === undefined)
 		{
-			bond_buffer = 0.3;
+			bond_buffer = self.bondDetectionTolerance;
 		}
 		
 		setBoxDimension();
@@ -85,8 +106,8 @@ function Structure()
 		assignRings(ring_maxsize);	// will not find rings bigger than 6 atoms!!
 		assignHybridization();
 		assignInsaturations();
-		correctHybridization();
 		assignDoubleBonds();
+		correctHybridization();
 		assignImplicitH();
 		assignExplicitH();
 		
@@ -122,7 +143,7 @@ function Structure()
 				var diffz = atom.coords[2]-center[2]-(division/2);
 				diffz = Math.ceil(diffz / division);
 				
-				//substract -1 here because array indeces starts at 0 instead of 1.
+				//substract -1 here because array indexes starts at 0 instead of 1.
 				if(box.array[diffx+centerbox-1][diffy+centerbox-1][diffz+centerbox-1] == null)
 				{
 					box.array[diffx+centerbox-1][diffy+centerbox-1][diffz+centerbox-1] = new Array();
@@ -168,6 +189,11 @@ function Structure()
 			for(var i=0; i < atoms.length; i++)
 			{
 				var atom = atoms[i];
+				if(atom.name == "CD2" && atom.group.name == "A_300")
+				{
+					console.log("I AM AT TRP causing problems, fix me, i should not be SP3");
+				}
+				
 				atom.assignHybridization();
 			}
 		}
@@ -293,6 +319,10 @@ function Structure()
 			for(var x = 0; x < atoms.length; x++)
 			{
 				var atom = atoms[x];
+				if(atom.group.name === "A_300" && atom.name == "CD2")
+				{
+					console.log("I AT PROBLEM TRP, FIX ME!");
+				}
 				if(atom.deloc != null 
 						|| (atom.hybridization !== "SP2"))
 				{
@@ -388,7 +418,11 @@ function Structure()
 				}
 				if(optimizednet == null)
 				{
-					console.log("ERROR GENERATING DOUBLE-BOND NETWORK");
+					self.LogError(new BioError(
+							BIOERRORS.LOG_TO_INTERNAL,
+							BIOERRORS.BONDING,
+							extremities,"Cannot double bond this network of SP2 atoms -> Probable cause: not an SP2 network")
+					)
 					return;
 				}
 				BondFromNetwork(optimizednet,deloc); // this should be the optimized network of double bonds that is reassigned	
@@ -490,8 +524,12 @@ function Structure()
 						if((atom1.element === "O" && atom2.element === "C")
 							 || (atom1.element === "C" && atom2.element === "O"))
 						{
-							 atom1.doublebonds.push(atom2.id);
-							 atom2.doublebonds.push(atom1.id);
+							 if(ValidateBondLength(atom1,atom2,"double")) 
+							 {
+								 atom1.doublebonds.push(atom2.id);
+								 atom2.doublebonds.push(atom1.id);
+							 }
+							 
 						}
 					}
 				}
@@ -513,8 +551,11 @@ function Structure()
 					{
 						if((atom1.element === "C" && atom2.element === "C"))
 						{
-							 atom1.doublebonds.push(atom2.id);
-							 atom2.doublebonds.push(atom1.id);
+							 if(ValidateBondLength(atom1,atom2,"double")) 
+							 { 
+								 atom1.doublebonds.push(atom2.id);
+								 atom2.doublebonds.push(atom1.id);
+							 }
 						}
 					}
 				}
@@ -535,8 +576,11 @@ function Structure()
 					{
 						if((atom1.element === "C" && atom2.element === "N"))
 						{
-							 atom1.doublebonds.push(atom2.id);
-							 atom2.doublebonds.push(atom1.id);
+							if(ValidateBondLength(atom1,atom2,"double")) 
+							{ 
+								atom1.doublebonds.push(atom2.id);
+								atom2.doublebonds.push(atom1.id);
+							}
 						}
 					}
 				}
@@ -634,6 +678,7 @@ function Structure()
 			if(Hs > 0)
 			{
 				missingH += Hs;
+				new BioError(BIOERRORS.LOG_TO_CONSOLE,BIOERRORS.ATOM,[atom],"Missing Hydrogens to complete Octect: Has more implicit than explicit H's");
 			}
 			if(Hs < 0)
 			{
