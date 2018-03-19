@@ -45,9 +45,23 @@ function Atom(group,name,element,coordinates)
 	this.explicitH= null;
 	this.ring = null;
 	this.deloc = null;
+	this.aromaticity = null;
 	/**
 	 * PUBLIC FUNCTIONS
 	 */
+	
+	this.isAromatic = function()
+	{
+		return self.aromaticity === 1 ? true:false;
+	}
+	this.isAntiAromatic = function()
+	{
+		return self.aromaticity === -1 ? true:false;
+	}
+	this.isNonAromatic = function()
+	{
+		return self.aromaticity === 0 ? true:false;
+	}
 	
 	this.addAltLoc = function(atom)
 	{
@@ -89,15 +103,15 @@ function Atom(group,name,element,coordinates)
 		
 		var newAtoms = builder.getCoords();
 		
-		number = atom.implicitH-atom.explicitH;
+		number = atom.implicitH - atom.explicitH;
 		
 		for(var x = 0; x < newAtoms.length && x < number;x++)
 		{
-			var newAtom = new Atom(atom.group,PDButil.RenameHydrogen(atom,x),"H",newAtoms[x]);
+			var newAtom = new Atom(atom.group,PDButil.RenameHydrogen(atom,x+1),"H",newAtoms[x]);
 			atom.explicitH ++;
 			atom.group.addAtom(newAtom);
-			atom.bonds.push(newAtom.id);
-			newAtom.bonds.push(atom.id);
+			atom.addBond("single",newAtom.id);
+			newAtom.addBond("single",atom.id);
 		}
 	}
 	
@@ -184,6 +198,11 @@ function Atom(group,name,element,coordinates)
 	 */
 	this.assignHybridization = function()
 	{	
+		if(self.id === 234 || self.id == 233 || self.id == 238)
+		{
+			console.log('fix me');
+		}	
+		
 		if(self.element == "H")
 		{
 			self.hybridization = null;
@@ -225,7 +244,7 @@ function Atom(group,name,element,coordinates)
 				self.hybridization = "SP3";
 				return [null,"SP3"]
 			}
-			
+			var isvalidate = false;
 			for(var i = 0; i < bonds.length-1; i++)
 			{
 				var atom1 = atoms[bonds[i]];
@@ -240,11 +259,23 @@ function Atom(group,name,element,coordinates)
 				{
 					var atom3 = atoms[bonds[x]];
 					angles += AngleBetweenAtoms(atom1,atomCenter,atom3);
+					if(ValidateBondLength(atomCenter,atom3,"double")) 
+					{
+						 isvalidate = true
+					}
+					else if(ValidateBondLength(atom1,atomCenter,"double")) 
+					{
+						 isvalidate = true;
+					}
 					len ++;
 				}
 			}
 			var angle = angles/len
 			self.hybridization = MatchAngleToHybridization(angle);
+			if(!isvalidate && self.hybridization == "SP2")
+			{
+				self.hybridization = "SP3";
+			}
 			return [angle,self.hybridization];
 		}
 		//HERE WE HAVE TO FIND HYBRIDIZATION OF ATOMS THAT ARE BOND TO ONLY 1 OTHER
@@ -283,6 +314,12 @@ function Atom(group,name,element,coordinates)
 	
 	this.correctSP2Hybridization = function()
 	{
+		
+		if(self.id == 157)
+		{
+		console.log("fix me");
+		}
+		
 		if(self.deloc === null){return;}
 		if(self.deloc.length === 1)
 		{
@@ -347,19 +384,61 @@ function Atom(group,name,element,coordinates)
 		}
 	}
 	
+	/**
+	 * @param type
+	 * "single" if you need to add a single bond
+	 * "double" if you need to add a double bond
+	 * @param atomID
+	 * the integer id number of the atom that is bonded to this
+	 * @Errors
+	 * Logs errors to console if the type input is not accepted
+	 * log errors to the parent structure of the atom is while trying to add a bond, the
+	 * atom would exceed octet.
+	 * Of note: even if the atom exceeds octet, the bond WILL BE ADDED.
+	 */
+	this.addBond = function(type,atomID)
+	{
+		if(type ==="single")
+		{
+			self.bonds.push(atomID);
+		}
+		else if(type === "double")
+		{
+			self.doublebonds.push(atomID);
+		}
+		else // the input type is wrong. only "single" or "double" accepted
+		{
+			new BioError(
+					BIOERRORS.LOG_TO_CONSOLE,
+					BIOERRORS.BONDING,
+					[self],
+					"Cannot recognize request in AddBond() for argument "+type);
+			return;
+		}
+		
+		if(self.exceedOctet)
+		{
+			self.structure.LogError(new BioError(
+					BIOERRORS.LOG_TO_INTERNAL,
+					BIOERRORS.BONDING,
+					[self],
+					"Exceeds Octet ("+self.element+" with "+self.bonds.length+self.doublebonds.length+" bonds)"))
+		}	
+	}
+	
 	this.exceedOctet = function()
 	{
 		var period = ELEMENTS.getPeriod(self.element)
 		if(period == 1)
 		{
-			if(self.bonds.lenght * 2  > 2)
+			if(self.bonds.length * 2  > 2)
 			{
 				return true;
 			}
 		}
 		else if(period == 2)
 		{
-			if(self.bonds.lenght * 2  > 8)
+			if(self.bonds.length * 2 + self.doublebonds.length *2 > 8)
 			{
 				return true;
 			}
@@ -421,6 +500,80 @@ function Atom(group,name,element,coordinates)
 			//IMPROVE THIS FOR SULFUR AND PHOSPHORUS GROUPS
 			return 0;
 		}	
+	}
+	
+	this.assignAromaticity = function()
+	{
+		var atom = self;
+		if(atom.aromaticity != null)
+		{
+			return;
+		}
+		
+		if(atom.inRing()[0] == false) // not in a ring, not aromatic!
+		{
+			atom.aromaticity = 0; 
+		}
+		else if(atom.hybridization == "SP3")
+		{
+			atom.aromaticity = 0;
+		}
+		else if (atom.deloc === null || atom.deloc.length == 0) // In a ring but no delocalization
+		{
+			atom.aromaticity = 0;
+		}	
+		else // in a ring
+		{
+			PIelec = 0;
+			for (var i = 0; i < atom.ring.length; i++)
+			{
+				//HERE, each double bonds is counted twice since, we loop over
+				//each atoms of the ring, but it is fine since there are two
+				// PI electrons per double bonds.
+				var nextatom = atom.structure.atoms[atom.ring[i]];
+				if(nextatom.doublebonds == 0)
+				{
+					 // HetAtm that can donate electrons like a O, N or S in a delocalized PI ring
+					if(ELEMENTS.getAtomicNumber(nextatom.element) >= 7) 
+					{
+						// Free Electrons
+						if(nextatom.bonds.length * 2 <= ELEMENTS.getValenceElectron(nextatom.element) - 2)
+						{
+							PIelec += 2;
+						}	
+					}	
+				}
+				else
+				{
+					PIelec += nextatom.doublebonds.length;
+				}
+				nextatom.aromaticity = isAromatic(PIelec);
+			}	
+			nextatom.aromaticity = 0; 
+		}
+	
+		function isAromatic(PIelectrons)
+		{
+			/**
+			 * aromaticity: 4n+2
+			 * antiaromatic: 4n
+			 */ 
+			var n = (PIelectrons - 2) % 4;
+			if(n == 0){return 1;}
+			else{return -1;}
+		}
+	}
+	
+	this.bondedTo = function(atom)
+	{
+		for(var i = 0; i < self.bonds.length; i++)
+		{
+			if(self.bonds[i] === atom.id)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 	
 	this.assignExplicitHydrogens = function()
@@ -513,6 +666,7 @@ function Atom(group,name,element,coordinates)
 		info += "Impl H : "+self.printImplicitH()+newLine;
 		info += "Expl H : "+self.printExplicitH()+newLine;
 		info += "In Ring: "+self.printRingInfo()+newLine;
+		info += "Is Arom: "+self.printAromaticityInfo()+newLine;
 		return info;
 	}
 	
@@ -578,6 +732,16 @@ function Atom(group,name,element,coordinates)
 		return text;
 	}
 	
+	this.printAromaticityInfo = function()
+	{
+		if(self.aromaticity === null) {return "Not assigned yet";}
+		else{
+			if(self.isNonAromatic()){return "Non Aromatic";}
+			else if(self.isAromatic()){return "Aromatic"}
+			else if(self.isAntiAromatic()){return "Anti Aromatic";}
+		}
+	}
+	
 	this.printImplicitH = function()
 	{
 		var text = "";
@@ -635,7 +799,7 @@ function Atom(group,name,element,coordinates)
 	 * The buffer softens the equilibrium distance between atoms and
 	 * allow for PDB files common errors on the positions of atoms 
 	 * a buffer of 
-	 * 		80%: small clashes or bond length that are too small
+	 * 		90%: small clashes or bond length that are too small
 	 * 		70%: reasonable buffer: only severe clashes will pop-up here
 	 * 		60%: Severe clashes will be identified here
 	 * 		50%: Extreme clashes will be identified 
@@ -651,18 +815,25 @@ function Atom(group,name,element,coordinates)
 		var clashes = [];
 		
 		var atom1 = self;
-		var radii1 = ELEMENTS.getCovalentRadius(atom1.element);
+		var radii1 = ELEMENTS.getVdwRadius(atom1.element);
 		var near = nearAtoms(atom1,3);
 		
 		for(var i = 0; i < near.length; i ++)//check at 3 Ang
 		{
 			nearby = near[i];
 			if(nearby == atom1.id){continue;}
-			
 			var atom2 = self.structure.atoms[nearby];
 			var dist_sqr = getAtomSquaredDistance(atom1,atom2);
 			
-			var radii2 = ELEMENTS.getCovalentRadius(atom2.element);
+			var radii2 = ELEMENTS.getVdwRadius(atom2.element);
+			
+
+			if(atom2.bondedTo(atom1))
+			{
+				radii2 = ELEMENTS.getCovalentRadius(atom2.element);
+				radii1 = ELEMENTS.getCovalentRadius(atom1.element);
+			}
+			
 			var eq_sqr = Math.pow((radii1+radii2)*buffer,2);
 			
 			if(dist_sqr < eq_sqr)
@@ -671,7 +842,7 @@ function Atom(group,name,element,coordinates)
 				{
 					clashes = [];
 				}
-				clashes.push([atom2.id,eq_sqr/dist_sqr]);
+				clashes.push([atom2,eq_sqr/dist_sqr]);
 			}
 		}
 		return clashes;
