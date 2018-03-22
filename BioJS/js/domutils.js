@@ -7,7 +7,6 @@
 *
 *-> Fix issue with the Align Center when calling the atom.toPDB() for atom names f length 2
 */
-
 function buildTitle(size,str)
 {
 	var header = document.createElement("header");
@@ -481,9 +480,9 @@ function ConfirmDialog(text, proceedText, cancelText, action)
 	
 	proceedbutton.onclick = function()
 	{
-		action();
 		confirmdialog.parentNode.removeChild(cover);
 		confirmdialog.parentNode.removeChild(confirmdialog);
+		action();
 	}
 	proceedbutton.href = "#";
 	var col2 = document.createElement("div");
@@ -771,7 +770,7 @@ function ProgressDialog(text)
 		}
 		else
 		{
-			bar.innerHTML = value+"/"+total;
+			bar.innerHTML = RoundNumberTo(percentage,2)+"% ("+value+"/"+total+")";
 			bar.style.width = percentage+"%";
 		}
 	}
@@ -804,6 +803,10 @@ function ProgressDialog(text)
 	}
 	
 	this.setMessage = function(text)
+	{
+		progressdialogtext.innerHTML = text;
+	}
+	this.setText = function(text)
 	{
 		progressdialogtext.innerHTML = text;
 	}
