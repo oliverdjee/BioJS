@@ -32,7 +32,7 @@ const PDButil =
 	{
 		var name = atom.name;
 		var parsed = parseInt(name);
-		if(name.length > 4)
+		if(name.length >= 4)
 		{
 			name = name.substring(0,4);
 		}
