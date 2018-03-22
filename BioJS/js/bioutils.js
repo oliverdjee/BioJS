@@ -114,8 +114,15 @@ function ValidateBondLength(atom1,atom2,bondType)
 			return (dToV <= (1.25+1.16)/2 && dToV > 1.05) ? true:false;
 		}	
 	}
-	new BioError(BIOERRORS.LOG_TO_CONSOLE,BIOERRORS.BOND,[atom1,atom2], "Request to ValidateBondLength Not Good: What is "+bondType+"?");
-	return false;
+	if(bondType !== "single"
+		&& bondType !== "double"
+			&& bondType !== "triple")
+	{
+		new BioError(BIOERRORS.LOG_TO_CONSOLE,BIOERRORS.BONDING,[atom1,atom2], "Request to ValidateBondLength Not Good: What is "+bondType+"?");
+		return false;
+	}
+	return true;
+	
 	
 }
 /**
@@ -217,12 +224,21 @@ function getBoxDimension(structure)
  * @returns {Number}
  * return the angle between the atoms in **degrees**
  */
-function AngleBetweenAtoms(atom1,atomCenter,atom3)
+function AngleBetweenAtoms(atom1,atomCenter,atom3,RadOrDegree)
 {
+	var type = RadOrDegree || "degree";
 	var vector21 = GEOMETRY.VectorizePoints(atomCenter.coords,atom1.coords);
 	var vector23 = GEOMETRY.VectorizePoints(atomCenter.coords,atom3.coords);
-	var angle = GEOMETRY.AngleBetweenVectors(vector21,vector23)/Math.PI*180; 
-	return angle;
+	if(type === "degree")
+	{
+		var angle = GEOMETRY.AngleBetweenVectors(vector21,vector23)/Math.PI*180;
+		return angle;
+	}
+	else
+	{
+		var angle = GEOMETRY.AngleBetweenVectors(vector21,vector23);
+		return angle;
+	}	
 }
 
 /**
@@ -295,6 +311,36 @@ function TorsionBetweenAtoms(atom1,atom2,atom3,atom4)
 	}
 	var angle = sign * GEOMETRY.AngleBetweenVectors(normal13,normal24)/Math.PI*180;
 	return angle;
+}
+
+function TorsionBetweenAtomPlanes(atom11,atom12,atom13,atom21,atom22,atom23, RadOrDegree)
+{
+	var type = RadOrDegree || "degree";
+	var vector12 = GEOMETRY.VectorizePoints(atom11.coords,atom12.coords);
+	var vector23 = GEOMETRY.VectorizePoints(atom12.coords,atom13.coords);
+	var vector45 = GEOMETRY.VectorizePoints(atom21.coords,atom22.coords);
+	var vector56 = GEOMETRY.VectorizePoints(atom22.coords,atom23.coords);
+	var normal1 = GEOMETRY.CrossProduct(vector12,vector23);
+	var normal2 = GEOMETRY.CrossProduct(vector45,vector56);
+	var sign = GEOMETRY.DotProduct(normal2,vector12);
+	if(sign < 0)
+	{
+		sign = -1;
+	}
+	else
+	{
+		sign = 1;
+	}
+	if(type === "radians" || type === "rad" || type === "radian")
+	{
+		var angle = sign * GEOMETRY.AngleBetweenVectors(normal1,normal2);
+		return angle;
+	}
+	else
+	{
+		var angle = sign * GEOMETRY.AngleBetweenVectors(normal1,normal2)/Math.PI*180;
+		return angle;
+	}	
 }
 
 /**
@@ -496,6 +542,35 @@ function SeqNumSort(groups)
 }
 
 /**
+ * 
+ * @param axis
+ * the bond to rotate as an axis. No need or normalization, as it is done inside the function
+ * @param atomsToRotate
+ * the array of atom objects to rotate around the bond
+ * @param offset
+ * the offset from center of the system to rotate
+ * @param angle
+ * the angle in radians for the rotation
+ * @param assignNewCoords
+ * if false, the atoms are virtually rotated. They are not assigned new coordinates
+ * if true, the atoms are rotated and rhe new coordinates are assigned
+ */
+function RotateAtoms(axis,atomsToRotate,offset,angle)
+{
+	rotMat = GEOMETRY.RotationMatrix3D(GEOMETRY.Normalize(axis),angle);
+	for(var i = 0; i < atomsToRotate.length; i++)
+	{
+		var atom = atomsToRotate[i];
+		var coords = GEOMETRY.SubstractVectors(offset,atom.coords);
+		var distance = GEOMETRY.VectorLength(coords);
+		var newCoords = GEOMETRY.RotateVector(GEOMETRY.Normalize(coords),rotMat);
+		newCoords = GEOMETRY.ScaleVector(newCoords,distance);
+		newCoords = GEOMETRY.AddVectors(newCoords,offset);
+		atom.coords = newCoords;
+	}	
+}
+
+/**
  * Goal: Look up a key in an array
  * @param array
  * The array to look into
@@ -555,7 +630,10 @@ function containsObject(obj, list) {
  */
 function InterruptedLoop(myFunc, array, startIndex, delay, callback, progressBarElement)
 {
-	if(progressBarElement === undefined){progressBarElement = new ProgressDialog("Auto Generated Progress Bar...");}
+	if(progressBarElement != null)
+	{
+		progressBarElement.show();
+	}
 	
 	var length = array.length;
 	var index = startIndex;
@@ -570,14 +648,33 @@ function InterruptedLoop(myFunc, array, startIndex, delay, callback, progressBar
 		
 		if(index < length)
 		{
-			progressBarElement.update(index,length);
+			if(progressBarElement != null)
+			{
+				progressBarElement.update(index,length);
+			}
 			setTimeout(process, delay);
 		}
 		
 		else
 		{
-			progressBarElement.update(index,length);
-			callback();
+			if(progressBarElement != null)
+			{
+				progressBarElement.update(index,length);
+				if(progressBarElement.getProgress() >= 100)
+				{
+					if(callback != null)
+					{
+						callback();
+					}
+				}
+			}
+			else
+			{
+				if(callback != null)
+				{
+					callback();
+				}
+			}
 		}
 	};
 	process();
