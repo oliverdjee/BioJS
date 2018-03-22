@@ -1,5 +1,4 @@
 /**
- * february 15:
  * -> Added addAtomCliking() to have access to atoms info or actions on the system.
  *    Implementation of it is now required. The function only changes the
  *    Color of the picked atom as of right now.
@@ -74,7 +73,6 @@ function BioViewer(structure, name, options) {
 													// "spacefill"
 	
 	var scene = self.scene;
-	var atoms = structure.atoms;
 	var aMaterial = {};
 	var particleSize = 1.0;
 	var DEFAULT_COLORS = []
@@ -106,6 +104,7 @@ function BioViewer(structure, name, options) {
 		direction.scaleInPlace(zoomFactor);
 		camera.position = direction;
 		var light = scene.lights[0];
+		light.intensity = 1.0;
 		light.position = camera.position;
 		camera.setTarget(position);
 	}
@@ -118,6 +117,11 @@ function BioViewer(structure, name, options) {
 	/**
 	 * PUBLIC FUNCTIONS
 	 */
+	this.setStructure = function(_structure)
+	{
+		structure = _structure;
+	}
+	
 	this.getSelectedGroups = function() {
 		var myatoms = [];
 		for (var i = 0; i < self.scene.selectedAtoms.length; i++) {
@@ -136,11 +140,11 @@ function BioViewer(structure, name, options) {
 		}
 	}
 
-	this.UpdateViewer = function(structure)
+	this.UpdateViewer = function(_structure)
 	{
-		structure = structure;
+		structure = _structure;
 		while(self.scene.meshes.length > 0){self.scene.meshes[0].dispose();}
-		createScene(structure);
+		createScene(_structure);
 	}
 
 	/**
@@ -438,24 +442,20 @@ function BioViewer(structure, name, options) {
 
 	
 	function UpdateAtom(atom) {
-		if (atom.selected) {
-			var sphere = self.scene.meshes[atom.id];
-			sphere.material = self.Materials.Picked;
+		var sphere = self.scene.meshes[atom.id];
+		if (atom.selected) 
+		{
 			sphere.selected = true;
 			self.scene.selectedAtoms.push(atom.id);
-		} else {
-			var sphere = self.scene.meshes[atom.id];
-			var color = ELEMENTS.getColor(atom.element);
-			var atomcolor = new BABYLON.Color4(color[0], color[1], color[2],
-					1.0);
-			var material = new BABYLON.StandardMaterial("atomMat", self.scene);
-			material.diffuseColor = atomcolor;
-			sphere.material = material;
+		} 
+		else 
+		{
 			sphere.selected = false;
 			sphere.groupselected = false;
 			sphere.chainselected = false;
 			sphere.structureselected = false;
 		}
+		Recolor(sphere);
 
 	}
 
@@ -468,6 +468,40 @@ function BioViewer(structure, name, options) {
 	function SelectAtom(item) {
 		self.scene.selectedAtoms.push(item.id);
 		self.scene.meshes[item.id].material = self.Materials.Picked;
+	}
+	
+	function Recolor(sphere) {
+		if (sphere.isAtom === false) {
+			return;
+		}
+
+		// DEBUGGING PASSED
+		if (sphere.selected == true) {
+			var material = aMaterial.Picked;
+			sphere.material = material;
+		} else {
+			var color = [ 0, 0, 0 ];
+			if (colorMode === "cpk") {
+				if (sphere.element == "O" || sphere.element == "N"
+						|| sphere.element == "H") {
+					color = ELEMENTS.getColor(sphere.element);
+				} else {
+					color = sphere.chainColor
+							|| aMaterial
+									.getColor(DEFAULT_COLORS[sphere.chainIndex]);
+					color = [ color.r, color.g, color.b ];
+				}
+			} else if (colorMode === "uniform") {
+				color = sphere.chainColor || 9;
+				color = [ color.r, color.g, color.b ];
+			}
+
+			var atomcolor = new BABYLON.Color4(color[0], color[1],
+					color[2], 1.0);
+			var material = new BABYLON.StandardMaterial("atomMat", scene);
+			material.diffuseColor = atomcolor;
+			sphere.material = material;
+		}
 	}
 
 	function createScene() {
@@ -500,6 +534,7 @@ function BioViewer(structure, name, options) {
 			addDownloadButton("o");
 			addChangeViewButton("q");
 			addChangeColorButton("w");
+			addUpdateButton("u");
 			// DEBUGGING
 			addTestButton("r");
 
@@ -537,19 +572,17 @@ function BioViewer(structure, name, options) {
 
 		function Rescale(mesh) {
 			if (viewMode === "ballnstick") {
-				scene.ballscale = 1.0 / 1.2;
 				if (mesh.isAtom === true) {
-					var scale = ELEMENTS.getVdwRadius(mesh.element)
-							* scene.ballscale; // 1.20 is set to see bonds
+					var scale = ELEMENTS.getCovalentRadius(mesh.element)
+							* 2; // 1.20 is set to see bonds
 					mesh.scaling = new BABYLON.Vector3(scale, scale, scale);
 				}
 			}
 
 			else if (viewMode === "spacefill") {
-				scene.ballscale = 1.2;
 				if (mesh.isAtom === true) {
 					var scale = ELEMENTS.getVdwRadius(mesh.element)
-							* scene.ballscale; // 1.20 is set to see bonds
+							* 2; // 1.20 is set to see bonds
 					mesh.scaling = new BABYLON.Vector3(scale, scale, scale);
 				}
 			}
@@ -620,20 +653,20 @@ function BioViewer(structure, name, options) {
 		function CreateBonds() {
 			var myprogress = new ProgressDialog("Generating 3D Bonds...")
 			myprogress.show();
-			InterruptedLoop(BondBuilder, atoms, 0, 0, AfterBuild,
+			InterruptedLoop(BondBuilder, structure.atoms, 0, 0, AfterBuild,
 					myprogress);
 		}
 
 		function CreateAtoms(callback) {
 			var myprogress = new ProgressDialog("Generating 3D Atoms...")
 			myprogress.show();
-			InterruptedLoop(StructureBuilder, atoms, 0, 0, callback,
+			InterruptedLoop(StructureBuilder, structure.atoms, 0, 0, callback,
 					myprogress);
 		}
 
 		function BondBuilder(atom) {
 			for (var b = 0; b < atom.bonds.length; b++) {
-				var atom2 = atoms[atom.bonds[b]];
+				var atom2 = structure.atoms[atom.bonds[b]];
 				if (atom2.id > atom.id) {
 					BondAtomsCylinder(atom, atom2, scene);
 					// BondAtomsLines(atom1,atom2,scene);
@@ -781,7 +814,7 @@ function BioViewer(structure, name, options) {
 			node = document.createTextNode(text);
 			info.appendChild(node);
 			info.appendChild(document.createElement("br"));
-			text = "Deloc: " + atom.deloc.toString();
+			text = "Deloc: " + (atom.deloc !== null ? atom.deloc.toString():"No Deloc");
 			node = document.createTextNode(text);
 			info.appendChild(node);
 			info.appendChild(document.createElement("br"));
@@ -803,39 +836,6 @@ function BioViewer(structure, name, options) {
 			}
 		}
 
-		function Recolor(sphere) {
-			if (sphere.isAtom === false) {
-				return;
-			}
-
-			// DEBUGGING PASSED
-			if (sphere.selected == true) {
-				var material = aMaterial.Picked;
-				sphere.material = material;
-			} else {
-				var color = [ 0, 0, 0 ];
-				if (colorMode === "cpk") {
-					if (sphere.element == "O" || sphere.element == "N"
-							|| sphere.element == "H") {
-						color = ELEMENTS.getColor(sphere.element);
-					} else {
-						color = sphere.chainColor
-								|| aMaterial
-										.getColor(DEFAULT_COLORS[sphere.chainIndex]);
-						color = [ color.r, color.g, color.b ];
-					}
-				} else if (colorMode === "uniform") {
-					color = sphere.chainColor || 9;
-					color = [ color.r, color.g, color.b ];
-				}
-
-				var atomcolor = new BABYLON.Color4(color[0], color[1],
-						color[2], 1.0);
-				var material = new BABYLON.StandardMaterial("atomMat", scene);
-				material.diffuseColor = atomcolor;
-				sphere.material = material;
-			}
-		}
 		/**
 		 * @key the key to be pressed on the keyboard to trigger event
 		 */
@@ -1196,7 +1196,11 @@ function BioViewer(structure, name, options) {
 				var atoms = [];
 				for (var i = 0; i < scene.selectedAtoms.length; i++) {
 					var atom = structure.atoms[scene.selectedAtoms[i]];
-					atom.BuildImplicitH();
+					var builtH = atom.BuildImplicitH(7.4);
+					for(var x = 0 ; x< builtH.length; x++)
+					{
+						atom.structure.ff.OptimizeHbond(builtH[x],5);
+					}
 				}
 				self.UpdateViewer();
 			}));
@@ -1249,6 +1253,16 @@ function BioViewer(structure, name, options) {
 			}));
 		}
 
+		function addUpdateButton(key) {
+			scene.actionManager.registerAction(new BABYLON.ExecuteCodeAction({
+				trigger : BABYLON.ActionManager.OnKeyUpTrigger,
+				parameter : key
+			}, function() {
+				self.UpdateViewer(structure);
+			}));
+		}
+
+		
 		/**
 		 * THIS FUNCTION IS STRICLY FOR DEBUGGING PURPOSES
 		 */
@@ -1291,7 +1305,7 @@ function BioViewer(structure, name, options) {
 				trigger : BABYLON.ActionManager.OnKeyUpTrigger,
 				parameter : key
 			}, function() {
-				alert(structure.name);
+				console.log("Empty test function");
 			}));
 		}
 
@@ -1304,7 +1318,7 @@ function BioViewer(structure, name, options) {
 		}
 
 		function PickGroup(mesh_atom) {
-			var group = atoms[mesh_atom.id].group.atoms;
+			var group = structure.atoms[mesh_atom.id].group.atoms;
 			for (var a = 0; a < group.length; a++) {
 				scene.meshes[group[a].id].material = aMaterial.Picked;
 				if (scene.meshes[group[a].id].selected == false) {
@@ -1316,7 +1330,7 @@ function BioViewer(structure, name, options) {
 		}
 
 		function PickChain(mesh_atom) {
-			var group = atoms[mesh_atom.id].chain.atoms;
+			var group = structure.atoms[mesh_atom.id].chain.atoms;
 			for (var a = 0; a < group.length; a++) {
 				scene.meshes[group[a].id].material = aMaterial.Picked;
 				if (scene.meshes[group[a].id].selected == false) {
@@ -1331,7 +1345,7 @@ function BioViewer(structure, name, options) {
 		}
 
 		function PickStructure(mesh_atom) {
-			var group = atoms[mesh_atom.id].structure.atoms;
+			var group = structure.atoms[mesh_atom.id].structure.atoms;
 			for (var a = 0; a < group.length; a++) {
 				scene.meshes[group[a].id].material = aMaterial.Picked;
 				if (scene.meshes[group[a].id].selected == false) {
