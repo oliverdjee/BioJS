@@ -11,7 +11,6 @@ function BioSelector(structure, document, dropdown_element, height)
 	//THIS IS CRUCIAL FOR PROPER INTERACTIONS
 	dropdown_element.empty();
 	dropdown_element.unbind("click");
-	var startDate = new Date();
 	//Contructor
 	var self = this;
 	this.structure =  structure;
@@ -41,7 +40,6 @@ function BioSelector(structure, document, dropdown_element, height)
 		openedArrow: '<i class="fa fa-caret-down" aria-hidden="true"></i>',
 		multiSelect: true,
 	}
-	PrintElapsedTime(startDate, "Residue selector tree built in");
 
 	/**
 	 * PUBLIC FUNCTIONS
