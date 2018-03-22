@@ -28,6 +28,8 @@ function Atom(group,name,element,coordinates)
 	this.asa = null;
 	this.pdbserial = null;
 	this.id = null;
+	this.fftype = null;
+	this.fg= null; //functional group that the atom is part of
 	this.isLinker = false; // is true, this atom is linked to another group.
 	this.name     = name;
 	this.element = element;
@@ -40,15 +42,82 @@ function Atom(group,name,element,coordinates)
 	this.structure = this.chain.structure;
 	this.bonds = [];
 	this.doublebonds = [];
+	this.triplebonds = []; // not implemented yet
 	this.hybridization = null;
 	this.implicitH = null;
 	this.explicitH= null;
 	this.ring = null;
 	this.deloc = null;
 	this.aromaticity = null;
+	this.Htype = (element == "H") ? "H":null;
 	/**
 	 * PUBLIC FUNCTIONS
 	 */
+	this.getCharge = function()
+	{
+		var rest =	2*(atom.bonds.length + 
+				atom.doublebonds.length + 
+				atom.triplebonds.length);
+		var charge = 0;
+		if(rest > 8) // Over octet... possible if S or P atoms or even bigger atoms 
+		{
+			charge =ELEMENTS.getValenceElectron(myElem) -
+					(atom.bonds.length + 
+					atom.doublebonds.length + 
+					atom.triplebonds.length);
+		}
+		else
+		{
+			charge =ELEMENTS.getValenceElectron(myElem) +
+					atom.bonds.length + 
+					atom.doublebonds.length + 
+					atom.triplebonds.length -
+					8;
+		}
+		return charge;
+	}
+	
+	
+	/**
+	 * @return
+	 * return null if atom is not a Hydrogen
+	 * "Hb" for H-bonding H atom
+	 * 
+	 */
+	this.getHydrogenType = function()
+	{
+		return self.Htype;
+	}
+	
+	this.getAtomForceFieldType = function()
+	{
+		return self.fftype;
+	}
+	
+	this.assignFFType = function()
+	{
+		var ff = self.structure.ff;
+		if(ff == null)
+		{
+			self.structure.LogError(new BioError(
+					BIOERRORS.LOG_TO_CONSOLE,
+					BIOERRORS.FF,
+					[self.structure],
+					"No force field assigned to the system"));
+			return;
+		}
+		self.fftype = ff.params.getType(self);
+		if(ff.params.name === "dreiding")
+		{
+			self.D0 = ff.params.getD0(self.fftype);
+			self.R0 = ff.params.getR0(self.fftype);
+		}	
+	}
+	
+	this.getFunctionalGroup = function()
+	{
+		return self.fg;
+	}
 	
 	this.isAromatic = function()
 	{
@@ -74,8 +143,27 @@ function Atom(group,name,element,coordinates)
 		self.altLoc.push(atom);
 	}
 	
-	this.BuildImplicitH = function()
+	this.BuildImplicitH = function(pH)
 	{
+		var atom = self;
+		var number = atom.implicitH - atom.explicitH;
+		if(self.element == "O")
+		{	
+			var pKa = atom.structure.fgHandler.pKa(atom);
+			if(pKa !== null && pH > pKa){
+				number --;
+				console.log(self.errorlog  + " "+pH+">"+pKa);
+			}
+		}
+		if(self.element == "N")
+		{
+			var pKa = atom.structure.fgHandler.pKa(atom);
+			if(pKa !== null && pH < pKa){
+				number ++;
+				console.log(self.errorlog  + " "+pH+">"+pKa);
+			}
+		}
+		if(number < 1){return;}
 		var connectedCoords = [];
 		var inPlaneAtoms = [];
 		var structure = self.structure;
@@ -100,19 +188,29 @@ function Atom(group,name,element,coordinates)
 		
 		var builder = new AtomBuilder(distance, atom.hybridization, atom.coords, connectedCoords,inPlaneAtoms);
 		builder.Build();
-		
 		var newAtoms = builder.getCoords();
-		
-		number = atom.implicitH - atom.explicitH;
-		
+		var built = [];
 		for(var x = 0; x < newAtoms.length && x < number;x++)
 		{
 			var newAtom = new Atom(atom.group,PDButil.RenameHydrogen(atom,x+1),"H",newAtoms[x]);
 			atom.explicitH ++;
+			newAtom.Htype = ELEMENTS.getAtomicNumber(atom.element) >= 7 ? "Hb":"H";
 			atom.group.addAtom(newAtom);
 			atom.addBond("single",newAtom.id);
 			newAtom.addBond("single",atom.id);
+			newAtom.assignFFType();
+			built.push(newAtom);
+			var fg = atom.fg;
+			if(fg != null)
+			{
+				fg.push(newAtom.id);
+				for(var i = 0; i < fg.length; i++)
+				{
+					atom.structure.atoms[fg[i]].fg = fg;
+				}
+			}
 		}
+		return built;
 	}
 	
 	this.toPDB = function()
@@ -171,6 +269,14 @@ function Atom(group,name,element,coordinates)
 	}
 	
 	/**
+	 * TO BE IMPLEMENTED FURTHER WITH MORE FUNCTIONAL GROUPS
+	 */
+	this.assignFunctionalGroup = function()
+	{
+		self.structure.fgHandler.assignFunctionalGroup(self);
+	}
+	
+	/**
 	 * @author Olivier
 	 * This function assigns SP,SP2,SP3 or null as hybridization of atoms.
 	 * BE CAREFUL ->	MANY HARDCODED RULES are used here, that may not apply to every small molecules
@@ -198,11 +304,6 @@ function Atom(group,name,element,coordinates)
 	 */
 	this.assignHybridization = function()
 	{	
-		if(self.id === 234 || self.id == 233 || self.id == 238)
-		{
-			console.log('fix me');
-		}	
-		
 		if(self.element == "H")
 		{
 			self.hybridization = null;
@@ -314,12 +415,6 @@ function Atom(group,name,element,coordinates)
 	
 	this.correctSP2Hybridization = function()
 	{
-		
-		if(self.id == 157)
-		{
-		console.log("fix me");
-		}
-		
 		if(self.deloc === null){return;}
 		if(self.deloc.length === 1)
 		{
@@ -505,10 +600,7 @@ function Atom(group,name,element,coordinates)
 	this.assignAromaticity = function()
 	{
 		var atom = self;
-		if(atom.aromaticity != null)
-		{
-			return;
-		}
+		if(atom.aromaticity != null){return;}
 		
 		if(atom.inRing()[0] == false) // not in a ring, not aromatic!
 		{
@@ -522,7 +614,7 @@ function Atom(group,name,element,coordinates)
 		{
 			atom.aromaticity = 0;
 		}	
-		else // in a ring
+		else // in a ring and delocalized
 		{
 			PIelec = 0;
 			for (var i = 0; i < atom.ring.length; i++)
@@ -537,7 +629,7 @@ function Atom(group,name,element,coordinates)
 					if(ELEMENTS.getAtomicNumber(nextatom.element) >= 7) 
 					{
 						// Free Electrons
-						if(nextatom.bonds.length * 2 <= ELEMENTS.getValenceElectron(nextatom.element) - 2)
+						if(nextatom.bonds.length <= ELEMENTS.getValenceElectron(nextatom.element) - 2)
 						{
 							PIelec += 2;
 						}	
@@ -547,9 +639,12 @@ function Atom(group,name,element,coordinates)
 				{
 					PIelec += nextatom.doublebonds.length;
 				}
+			}
+			for (var i = 0; i < atom.ring.length; i++)
+			{
+				var nextatom = atom.structure.atoms[atom.ring[i]];
 				nextatom.aromaticity = isAromatic(PIelec);
-			}	
-			nextatom.aromaticity = 0; 
+			}
 		}
 	
 		function isAromatic(PIelectrons)
@@ -648,13 +743,13 @@ function Atom(group,name,element,coordinates)
 		var info ="";
 		info += "Name   : "+self.name+newLine;
 		info += "Index  : "+self.id+newLine;
+		info += "FF type: "+self.fftype+newLine;
 		info += "PDB id : "+self.pdbserial+newLine;
 		info += "Element: "+self.element+newLine;
 		info += "Coords : "+self.printCoords()+newLine;
 		info += "Struct : "+self.structure.name+newLine;
 		info += "Chain  : "+self.chain.chainID+newLine;
 		info += "Group  : "+self.group.Class + " " + self.group.type+ " " +self.group.resNum.seqNum+newLine;
-		info += "Alt Loc: "+self.printAltLoc()+newLine;
 		info += "Occupcy: "+self.occupancy+newLine;
 		info += "B-factr: "+self.bfactor+newLine;
 		info += "Hybryd : "+self.hybridization+newLine;
@@ -667,6 +762,8 @@ function Atom(group,name,element,coordinates)
 		info += "Expl H : "+self.printExplicitH()+newLine;
 		info += "In Ring: "+self.printRingInfo()+newLine;
 		info += "Is Arom: "+self.printAromaticityInfo()+newLine;
+		info += "Alt Loc: "+self.printAltLoc()+newLine;
+		
 		return info;
 	}
 	
