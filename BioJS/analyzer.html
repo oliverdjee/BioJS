@@ -124,15 +124,6 @@
     my_viewer.appendToDOM(element, height, width);
   }
 	
-	function displaySelector(structure,dropdown_element)
-	{
-		var height = 650;
-		var width = 350;
-		my_selector = new BioSelector(structure,document,dropdown_element,height);
-		my_selector.link3DViewer(my_viewer);
-		my_selector.showDropDown();
-	}
-	
 	function ShowBfactor(elementID)
 	{
 		var element = document.getElementById(elementID);
