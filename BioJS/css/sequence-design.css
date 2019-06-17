@@ -791,6 +791,19 @@ body {
     margin-left: 24px;
 }
 
+#atom_info {
+    position: absolute;
+    padding-left: 2px;
+    padding-right: 2px;
+    color: black;
+    border: 1pt black;
+    background-color: white;
+    filter: drop-shadow(0px 0px 3px #222);
+    top: 5px;
+    left: 5px;
+    text-align: left;
+}
+
 .jmol-heading.centers {
     text-align: center;
 }
@@ -1979,34 +1992,21 @@ body {
     margin-left: 56px;
 }
 
-.html-embed {
-    width: 80%;
-    height: auto;
-    margin-bottom: 0px;
-    padding-bottom: 0px;
-}
-
-.html-embed.local-pdb {
-    display: block;
-    width: 80%;
-    margin: 43px auto 0px 24px;
-}
-
-.html-embed.pdbbutton {
-    position: static;
-    width: 80%;
-    height: 45px;
-    margin-top: 0px;
-    padding-top: 10px;
-    color: #a8a7a7;
-    font-size: 18px;
-    font-weight: 300;
-    text-transform: capitalize;
+.pdbbutton.analyzer {
     cursor: pointer;
 }
-
-.html-embed.pdbbutton.analyzer {
-    width: 240px;
+.html-embed.pdbbutton {
+    color: #a8a7a7;
+}
+.pdbbutton {
+    display: block;
+    width: 100%;
+    height: 25px;
+    border-radius: 4px;
+    background-color: #fff;
+    box-shadow: 0px 0px 4px 0 #000;
+    font-size: 18px;
+    text-align: center;
 }
 
 .div-block-3 {
@@ -2104,32 +2104,8 @@ body {
     margin-top: 0px;
 }
 
-.pdbbutton {
-    display: block;
-    width: 80%;
-    height: 45px;
-    margin: 0px auto;
-    padding: 7px;
-    border: 2px solid #000;
-    border-radius: 8px;
-    background-color: #fff;
-    box-shadow: 3px 3px 3px 0 #000;
-    color: #db3030;
-    font-size: 18px;
-    font-weight: 700;
-    text-align: center;
-    text-transform: none;
-    cursor: text;
-}
-
 .pdbbutton:hover {
-    border-color: #db3030;
     color: #db3030;
-}
-
-.pdbbutton.analyzer {
-    width: 240px;
-    cursor: pointer;
 }
 
 .heading {
@@ -2192,18 +2168,10 @@ body {
 }
 
 .text-block-2 {
-    width: 70%;
-    margin-right: 31px;
-    float: right;
+    width: 100%;
     text-align: right;
-}
-
-.text-block-2.analyzer {
-    display: block;
-    width: 245px;
-    margin-right: auto;
-    margin-left: auto;
-    float: none;
+    color: black;
+    margin-bottom: 10px;
 }
 
 .text-span {
@@ -2302,7 +2270,7 @@ body {
     padding-left: 10px;
     float: left;
     border: 2px solid #fff;
-    border-radius: 8px;
+    border-radius: 4px;
     background-color: #020202;
     box-shadow: 3px 3px 3px 0 #000;
     font-weight: 700;
@@ -2310,17 +2278,20 @@ body {
     cursor: pointer;
 }
 
+#sidebar {
+    background-color: #3fa39f;
+}
+
 .submit-button.options {
-    width: 90px;
+    width: 95px;
     height: 50px;
     margin: 2px 5px;
     padding: 3px 5px;
-    border-color: #020202;
-    background-color: rgba(27, 163, 158, .83);
-    box-shadow: 2px 2px 2px -1px #000;
-    color: #db3030;
-    font-size: 12px;
-    font-weight: 700;
+    background-color: white;
+    box-shadow: 0px 0px 3px 1px #000;
+    color: #777;
+    font-size: 11px;
+    font-weight: 500;
 }
 
 .submit-button.options:hover {
@@ -2345,18 +2316,6 @@ body {
     -webkit-align-items: stretch;
     -ms-flex-align: stretch;
     align-items: stretch;
-}
-
-.submit-button.options.parameterize {
-    width: 130px;
-}
-
-.submit-button.options.motif {
-    width: 100px;
-}
-
-.submit-button.options.warnings {
-    width: 100px;
 }
 
 .modal-wrapper {

@@ -290,9 +290,6 @@ input[type="reset"] {
     cursor: pointer;
     -webkit-appearance: button;
 }
-.w-form {
-    margin: 0 0 15px;
-}
 .w-form-done {
     display: none;
     padding: 20px;
@@ -316,11 +313,9 @@ label {
     width: 100%;
     height: 38px;
     padding: 8px 12px;
-    margin-bottom: 10px;
     font-size: 14px;
     line-height: 1.428571429;
     color: #333333;
-    vertical-align: middle;
     background-color: #ffffff;
     border: 1px solid #cccccc;
 }

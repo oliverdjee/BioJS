@@ -848,19 +848,6 @@ function BioViewer(structure, name, options) {
         function on_hover(meshEvent) {
             var info = document.createElement('p');
             info.id = 'atom_info';
-            info.zIndex = 0;
-            var sty = info.style;
-            info.align = 'left';
-            sty.position = 'absolute';
-            sty.lineHeight = '1em';
-            sty.paddingLeft = '2px';
-            sty.paddingRight = '2px';
-            sty.color = 'black';
-            sty.border = '1pt black';
-            sty.backgroundColor = 'beige';
-            sty.font = '8px Consolas';
-            sty.top = '5px';
-            sty.left = '5px';
 
             var atom = structure.atoms[meshEvent.meshUnderPointer.id];
             var text = 'Atom ' + atom.name;

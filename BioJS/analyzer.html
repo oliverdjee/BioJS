@@ -220,7 +220,7 @@
     </div>
   </div>
   <section id="Design" class="section section--main">
-      <div class="w-col w-col-2">
+      <div id="sidebar" class="w-col w-col-2">
         <div class="w-form">
           <form id="wf-form-CustomUpload" name="wf-form-CustomUpload" data-name="CustomUpload" method="post" action="FileUploadServlet" enctype="multipart/form-data">
             <div class="w-row">
@@ -228,9 +228,17 @@
             </div>
             <div class="w-row">
               <div class="container--cc">
-                <div class="html-embed pdbbutton analyzer w-embed"><label class="PDBButton" id="pdb-local" name="file"><input
-                  type="file" accept=".pdb" id="inputfile" name="file" style="display:none" onchange="onUpload(this.files[0])">
-                  Local PDB File</label>
+                <div class="html-embed pdbbutton analyzer w-embed">
+                  <label class="PDBButton" id="pdb-local" name="file">
+                    <input
+                      type="file" 
+                      accept=".pdb" 
+                      id="inputfile" 
+                      name="file" 
+                      style="display:none" 
+                      onchange="onUpload(this.files[0])">
+                      Local PDB File
+                    </label>
                 </div>
                 <div class="text-block-2 analyzer">(<strong>PROTEIN</strong> in a <strong>PDB</strong> format)</div>
               </div>
@@ -239,61 +247,84 @@
               <div class="container--cc">
                 <input type="text" class="pdbbutton analyzer w-input" name="PDBrcsb" maxlength="4" onchange="rcsbUpload(this)"
                   data-name="PDBrcsb" pattern="[A-Za-z0-9]{4}$" placeholder="Load PDB (RCSB)" id="PDBrcsb">
-                <div class="text-block-2 analyzer">4-letter code (e.g. 1thf)</div>
+                <div class="text-block-2 analyzer">4-letter code (e.g. <strong>1THF</strong>)</div>
               </div>
             </div>
           </form>
         </div>
         <div class="w-row">
-          <div class="step-title analyzer options">General Info</div><a href="#"
-            id="warning" whenclicked="ShowStructuralWarnings('JmolBlock')"
-            class="submit-button options warnings w-button">Structural Warnings</a><a
-            href="#" id="peptide" class="submit-button options w-button">show
-            Peptide</a><a href="#" id="ptm" class="submit-button options w-button">list
-            / show<br>PTM</a><a href="#" id="hetatm"
-            class="submit-button options w-button">list / show Hetatms</a><a href="#"
-            id="sasa" whenclicked="ShowExposure('JmolBlock')"
-            class="submit-button options w-button">SASA Profile</a><a href="#"
-            id="interaction" whenclicked="ShowContacts('JmolBlock')"
-            class="submit-button options w-button">Contact Profile</a><a href="#"
-            id="bfactor" whenclicked="ShowBfactor('JmolBlock')"
-            class="submit-button options w-button">B-factor Profile</a><a href="#"
-            id="phipsi" class="submit-button options w-button"
-            whenclicked="ShowRamachandran('JmolBlock')">PHI-PSI Profile</a><a href="#"
-            id="water" class="submit-button options w-button">Water Profile</a>
+          <div class="step-title analyzer options">Health Info</div>
+          <div class="w-col w-col-4">
+            <a href="#" id="warning" whenclicked="ShowStructuralWarnings('JmolBlock')"
+              class="submit-button options warnings w-button">Structural<br>Warnings
+            </a>
+            <a href="#" id="peptide" class="submit-button options w-button">Show<br>Peptide</a>
+            <a href="#" id="ptm" class="submit-button options w-button">List / Show PTM</a>
+          </div>
+          <div class="w-col w-col-4">
+            <a href="#" id="hetatm" class="submit-button options w-button">list / show Hetatms</a>
+            <a href="#" id="sasa" whenclicked="ShowExposure('JmolBlock')" class="submit-button options w-button">SASA<br>Profile</a>
+            <a href="#" id="interaction" whenclicked="ShowContacts('JmolBlock')"
+              class="submit-button options w-button">Contact<br>Profile
+            </a>
+          </div>
+          <div class="w-col w-col-4">
+            <a href="#" id="bfactor" whenclicked="ShowBfactor('JmolBlock')"
+              class="submit-button options w-button">B-factor<br>Profile
+            </a>
+            <a href="#" id="phipsi" class="submit-button options w-button"
+              whenclicked="ShowRamachandran('JmolBlock')">PHI-PSI<br>Profile
+            </a>
+            <a href="#" id="water" class="submit-button options w-button">Water<br>Profile</a>
+          </div>
         </div>
         <div id="JmolBlock" class="hiddenblock"></div>
         <div class="w-row">
-          <div class="step-title analyzer options">Structure Manipulations</div><a
-            href="#" id="clean" class="submit-button options w-button">Clean
-            structure</a><a href="#" id="split"
-            class="submit-button options w-button">Split Protein</a><a href="#"
-            id="addh" class="submit-button options w-button">Add hydrogens</a><a
-            href="#" id="repair" class="submit-button options w-button">Repair
-            Missing</a><a href="#" id="phoenixrename"
-            class="submit-button options w-button">Phoenix names</a>
+          <div class="step-title analyzer options">Structure Manipulations</div>
+            <div class="w-col w-col-4">
+              <a href="#" id="split" class="submit-button options w-button">Split<br>Protein</a>
+              <a href="#" id="addh" class="submit-button options w-button">Add<br>hydrogens</a>
+            </div>
+            <div class="w-col w-col-4">
+              <a href="#" id="repair" class="submit-button options w-button">Repair<br>Missing</a>
+              <a href="#" id="phoenixrename" class="submit-button options w-button">Phoenix<br>Names</a>
+            </div>
+            <div class="w-col w-col-4">
+              <a href="#" id="clean" class="submit-button options w-button">Clean<br>Structure</a>
+            </div>
         </div>
         <div id="StructureManipulations" class="hiddenblock"></div>
         <div class="w-row">
-          <div class="step-title analyzer options">PHOENIX Manipulations</div><a href="#" id="charges"
-            class="submit-button options w-button">get PARSE charges</a><a href="#"
-            id="pdbinfo" class="submit-button options w-button">get PDBinfo</a><a
-            href="#" id="resclass" class="submit-button options w-button">get
-            resclass</a><a href="#" id="closeRes"
-            class="submit-button options w-button">Nearby Residues</a>
+          <div class="step-title analyzer options">PHOENIX&reg; Files</div>
+          <div class="w-col w-col-4">
+            <a href="#" id="charges" class="submit-button options w-button">Get PARSE<br>Charges</a>
+            <a href="#" id="pdbinfo" class="submit-button options w-button">Get<br>PDBinfo</a>
+          </div>
+          <div class="w-col w-col-4">
+            <a href="#" id="resclass" class="submit-button options w-button">Get<br>Resclass</a>
+
+          </div>
+          <div class="w-col w-col-4"> 
+            <a href="#" id="closeRes" class="submit-button options w-button">Nearby<br>Residues</a>
+          </div>
         </div>
-        <div id="PhoenixManipulations" class="hiddenblock"></div>
+        <div id="VIPERFigures" class="hiddenblock"></div>
         <div class="w-row">
-          <div class="step-title analyzer options">General Figures</div><a href="#" id="bfactorGraph"
-            class="submit-button options w-button">B-factor<br>Graph</a><a href="#"
-            id="sasaGraph" class="submit-button options w-button">Sasa<br>Graph</a><a
-            href="#" id="phipsiGraph" class="submit-button options w-button">Phi-Psi
-            Graph</a><a href="#" id="waterGraph"
-            class="submit-button options w-button">water Graph</a><a href="#"
-            id="interactionGraph" class="submit-button options w-button">Contact
-            Graph</a><a href="#" id="motif"
-            class="submit-button options motif w-button">Recognition Motif</a><a
-            href="#" id="array" class="submit-button options w-button">Peptide Array</a>
+          <div class="step-title analyzer options">VIPER&reg; Figures</div>
+          <div class="w-col w-col-4">
+            <a href="#" id="bfactorGraph" class="submit-button options w-button">B-factor<br>Graph</a>
+            <a href="#" id="sasaGraph" class="submit-button options w-button">SASA<br>Graph</a>
+            <a href="#" id="array" class="submit-button options w-button">Peptide Array</a>
+          </div>
+          <div class="w-col w-col-4">
+            <a href="#" id="phipsiGraph" class="submit-button options w-button">Phi-Psi<br>Graph</a>
+            <a href="#" id="waterGraph" class="submit-button options w-button">Water<br>Graph</a>
+            
+          </div>
+          <div class="w-col w-col-4">
+            <a href="#" id="interactionGraph" class="submit-button options w-button">Contact Graph</a>
+            <a href="#" id="motif" class="submit-button options motif w-button">Recognition Motif</a>
+          </div>
         </div>
         <div id="GeneralFigures" class="hiddenblock"></div>
       </div>
